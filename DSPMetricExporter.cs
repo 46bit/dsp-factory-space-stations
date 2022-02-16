@@ -11,6 +11,7 @@ namespace DSPMetricExporter
     // FIXME: This PluginInfo won't work and I have no idea why
     //[BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     [BepInPlugin("com.46bit.dsp-metric-exporter-plugin", "DSP Metric Exporter Plugin", "0.0.0")]
+    [BepInDependency("me.xiaoye97.plugin.Dyson.LDBTool")]
     public class DSPMetricExporterPlugin : BaseUnityPlugin
     {
         private static DSPMetricExporterPlugin instance;

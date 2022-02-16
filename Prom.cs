@@ -1,4 +1,5 @@
 using Prometheus;
+using System;
 using System.Collections.Generic;
 
 namespace DSPMetricExporter
@@ -7,12 +8,13 @@ namespace DSPMetricExporter
     {
         private static readonly Counter Updates = Metrics.CreateCounter("updates", "Counter of update calls");
         private static readonly Counter GameTicks = Metrics.CreateCounter("game_ticks", "Counter of game ticks");
-        private static readonly Gauge Stations = Metrics.CreateGauge("stations_total", "Number of stations, by planet", new GaugeConfiguration { LabelNames = new[] { "planetDisplayName" } });
-        private static readonly Gauge Items = Metrics.CreateGauge("items_buffered", "Number of items in logistics towers", new GaugeConfiguration { LabelNames = new[] { "itemId" } });
+        private static readonly Gauge Stations = Metrics.CreateGauge("stations_total", "Number of stations, by planet", new GaugeConfiguration { LabelNames = new[] { "planet" } });
+        private static readonly Gauge Items = Metrics.CreateGauge("items", "Number of items in logistics towers", new GaugeConfiguration { LabelNames = new[] { "item" } });
         private static readonly Gauge Deposits = Metrics.CreateGauge("deposits_total", "Number of ore deposits, by solar system", new GaugeConfiguration { LabelNames = new[] { "star", "ore" } });
         private static readonly Gauge UnoccupiedDeposits = Metrics.CreateGauge("deposits_unoccupied", "Number of unoccupied ore deposits, by solar system", new GaugeConfiguration { LabelNames = new[] { "star", "ore" } });
 
         private MetricServer prometheusServer;
+        private DateTime lastMetricsUpdate;
 
         public Prom()
         {
@@ -28,6 +30,14 @@ namespace DSPMetricExporter
         public void GameTick(long time, GameData gameData)
         {
             GameTicks.Inc();
+
+            var now = DateTime.Now;
+            var interval = new TimeSpan(0, 0, 15);
+            if (lastMetricsUpdate != null && now.Subtract(lastMetricsUpdate).CompareTo(interval) < 0)
+            {
+                return;
+            }
+            lastMetricsUpdate = now;
 
             Dictionary<int, int> items = new Dictionary<int, int>();
 
@@ -116,16 +126,20 @@ namespace DSPMetricExporter
 
             foreach (KeyValuePair<int, int> entry in items)
             {
-                Items.WithLabels(entry.Key.ToString()).Set(entry.Value);
+                try
+                {
+                    var itemName = LDB.items.Select(entry.Key).Name.Translate();
+                    Items.WithLabels(itemName).Set(entry.Value);
+                } catch (Exception e) { }
             }
 
             foreach (KeyValuePair<(StarData, EVeinType), int> entry in deposits)
             {
-                Deposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
+                Deposits.WithLabels(entry.Key.Item1.displayName, entry.Key.Item2.ToString()).Set(entry.Value);
             }
             foreach (KeyValuePair<(StarData, EVeinType), int> entry in unoccupiedDeposits)
             {
-                UnoccupiedDeposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
+                UnoccupiedDeposits.WithLabels(entry.Key.Item1.displayName, entry.Key.Item2.ToString()).Set(entry.Value);
             }
         }
     }
