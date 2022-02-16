@@ -8,8 +8,8 @@ namespace DSPMetricExporter
         private static readonly Counter Updates = Metrics.CreateCounter("updates", "Counter of update calls");
         private static readonly Counter GameTicks = Metrics.CreateCounter("game_ticks", "Counter of game ticks");
         private static readonly Gauge Stations = Metrics.CreateGauge("stations_total", "Number of stations, by planet", new GaugeConfiguration { LabelNames = new[] { "planetDisplayName" } });
-        private static readonly Gauge Deposits = Metrics.CreateGauge("deposits_total", "Number of ore deposits, by planet", new GaugeConfiguration { LabelNames = new[] { "planetDisplayName", "ore" } });
-        private static readonly Gauge UnoccupiedDeposits = Metrics.CreateGauge("deposits_unoccupied", "Number of unoccupied ore deposits, by planet", new GaugeConfiguration { LabelNames = new[] { "planetDisplayName", "ore" } });
+        private static readonly Gauge Deposits = Metrics.CreateGauge("deposits_total", "Number of ore deposits, by solar system", new GaugeConfiguration { LabelNames = new[] { "star", "ore" } });
+        private static readonly Gauge UnoccupiedDeposits = Metrics.CreateGauge("deposits_unoccupied", "Number of unoccupied ore deposits, by solar system", new GaugeConfiguration { LabelNames = new[] { "star", "ore" } });
 
         private MetricServer prometheusServer;
 
@@ -27,6 +27,9 @@ namespace DSPMetricExporter
         public void GameTick(long time, GameData gameData)
         {
             GameTicks.Inc();
+
+            Dictionary<(StarData, EVeinType), int> deposits = new Dictionary<(StarData, EVeinType), int>();
+            Dictionary<(StarData, EVeinType), int> unoccupiedDeposits = new Dictionary<(StarData, EVeinType), int>();
 
             foreach (var planetFactory in gameData.factories)
             {
@@ -71,8 +74,6 @@ namespace DSPMetricExporter
                         veinGroups[vein.groupIndex].Add(vein);
                     }
 
-                    Dictionary<EVeinType, int> deposits = new Dictionary<EVeinType, int>();
-                    Dictionary<EVeinType, int> unoccupiedDeposits = new Dictionary<EVeinType, int>();
                     foreach (var veinGroup in veinGroups.Values)
                     {
                         if (veinGroup.Count == 0)
@@ -90,23 +91,23 @@ namespace DSPMetricExporter
                             }
                         }
 
-                        deposits.TryGetValue(veinGroup[0].type, out var depositCount);
-                        deposits[veinGroup[0].type] = depositCount + 1;
+                        var key = (planetFactory.planet.star, veinGroup[0].type);
+                        deposits.TryGetValue(key, out var depositCount);
+                        deposits[key] = depositCount + 1;
                         if (!occupied)
                         {
-                            unoccupiedDeposits.TryGetValue(veinGroup[0].type, out var unoccupiedDepositCount);
-                            unoccupiedDeposits[veinGroup[0].type] = unoccupiedDepositCount + 1;
+                            unoccupiedDeposits.TryGetValue(key, out var unoccupiedDepositCount);
+                            unoccupiedDeposits[key] = unoccupiedDepositCount + 1;
                         }
                     }
-
-                    foreach (KeyValuePair<EVeinType, int> entry in deposits)
-                    {
-                        Deposits.WithLabels(planetFactory.planet.displayName, entry.Key.ToString()).Set(entry.Value);
-                    }
-                    foreach (KeyValuePair<EVeinType, int> entry in unoccupiedDeposits)
-                    {
-                        UnoccupiedDeposits.WithLabels(planetFactory.planet.displayName, entry.Key.ToString()).Set(entry.Value);
-                    }
+                }
+                foreach (KeyValuePair<(StarData, EVeinType), int> entry in deposits)
+                {
+                    Deposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
+                }
+                foreach (KeyValuePair<(StarData, EVeinType), int> entry in unoccupiedDeposits)
+                {
+                    UnoccupiedDeposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
                 }
             }
         }
