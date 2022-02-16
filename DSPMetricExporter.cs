@@ -15,12 +15,8 @@ namespace DSPMetricExporter
     {
         private static DSPMetricExporterPlugin instance;
 
-        //private static readonly Counter Updates = Metrics.CreateCounter("updates", "Counter of game ticks");
-
-        //private MetricServer prometheusServer;
         private Prom prom;
 
-        #region Unity Core Methods
         void Awake()
         {
             instance = this;
@@ -39,19 +35,17 @@ namespace DSPMetricExporter
         void Update()
         {
             prom.Update();
-            // Updates.Inc();
         }
-        #endregion
 
-        // #region Harmony Patch Hooks in DSP
-        // [HarmonyPatch(typeof(GameData), "GameTick")]
-        // class GameData_GameTick
-        // {
-        //     public static void Postfix(long time, GameData __instance)
-        //     {
-        //         instance.Logger.LogInfo("Metric Exporter Plugin: GameTick.Postfix");
-        //     }
-        // }
-        // #endregion
+        [HarmonyPatch(typeof(GameData), "GameTick")]
+        class GameData_GameTick
+        {
+            public static void Postfix(long time, GameData __instance)
+            {
+                //instance.Logger.LogInfo("Metric Exporter Plugin: GameTick.Postfix");
+                // FIXME: Only update metrics every N seconds (or when the endpoint is polled by Prometheus?)
+                instance.prom.GameTick(time, __instance);
+            }
+        }
     }
 }
