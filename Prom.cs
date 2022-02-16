@@ -8,6 +8,7 @@ namespace DSPMetricExporter
         private static readonly Counter Updates = Metrics.CreateCounter("updates", "Counter of update calls");
         private static readonly Counter GameTicks = Metrics.CreateCounter("game_ticks", "Counter of game ticks");
         private static readonly Gauge Stations = Metrics.CreateGauge("stations_total", "Number of stations, by planet", new GaugeConfiguration { LabelNames = new[] { "planetDisplayName" } });
+        private static readonly Gauge Items = Metrics.CreateGauge("items_buffered", "Number of items in logistics towers", new GaugeConfiguration { LabelNames = new[] { "itemId" } });
         private static readonly Gauge Deposits = Metrics.CreateGauge("deposits_total", "Number of ore deposits, by solar system", new GaugeConfiguration { LabelNames = new[] { "star", "ore" } });
         private static readonly Gauge UnoccupiedDeposits = Metrics.CreateGauge("deposits_unoccupied", "Number of unoccupied ore deposits, by solar system", new GaugeConfiguration { LabelNames = new[] { "star", "ore" } });
 
@@ -28,6 +29,8 @@ namespace DSPMetricExporter
         {
             GameTicks.Inc();
 
+            Dictionary<int, int> items = new Dictionary<int, int>();
+
             Dictionary<(StarData, EVeinType), int> deposits = new Dictionary<(StarData, EVeinType), int>();
             Dictionary<(StarData, EVeinType), int> unoccupiedDeposits = new Dictionary<(StarData, EVeinType), int>();
 
@@ -43,11 +46,19 @@ namespace DSPMetricExporter
                     long numberOfTransportStations = 0;
                     for (int i = 1; i < planetFactory.transport.stationCursor; i++)
                     {
-                        if (planetFactory.transport.stationPool[i] == null || planetFactory.transport.stationPool[i].id != i)
+                        var station = planetFactory.transport.stationPool[i];
+                        if (station == null || station.id != i)
                         {
                             continue;
                         }
-                        numberOfTransportStations += 1;
+
+                        foreach(var store in station.storage)
+                        {
+                            items.TryGetValue(store.itemId, out var itemCount);
+                            items[store.itemId] = itemCount + store.count;
+                        }
+
+                        numberOfTransportStations++;
                     }
                     Stations.WithLabels(planetFactory.planet.displayName).Set(numberOfTransportStations);
                 }
@@ -101,14 +112,20 @@ namespace DSPMetricExporter
                         }
                     }
                 }
-                foreach (KeyValuePair<(StarData, EVeinType), int> entry in deposits)
-                {
-                    Deposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
-                }
-                foreach (KeyValuePair<(StarData, EVeinType), int> entry in unoccupiedDeposits)
-                {
-                    UnoccupiedDeposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
-                }
+            }
+
+            foreach (KeyValuePair<int, int> entry in items)
+            {
+                Items.WithLabels(entry.Key.ToString()).Set(entry.Value);
+            }
+
+            foreach (KeyValuePair<(StarData, EVeinType), int> entry in deposits)
+            {
+                Deposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
+            }
+            foreach (KeyValuePair<(StarData, EVeinType), int> entry in unoccupiedDeposits)
+            {
+                UnoccupiedDeposits.WithLabels(entry.Key.Item1.name, entry.Key.Item2.ToString()).Set(entry.Value);
             }
         }
     }
