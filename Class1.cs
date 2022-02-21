@@ -90,7 +90,7 @@ namespace GigaStations
             ProtoRegistry.RegisterString("CantDowngradeWarn", "Downgrading logistic station is not possible!");
 
 
-            collector = ProtoRegistry.RegisterItem(2112, "FactorySpaceStationPlaneFilter_Name", "FactorySpaceStationPlaneFilter_Desc", "assets/gigastations/texture2d/icon_collector", 2703);
+            collector = ProtoRegistry.RegisterItem(2112, "FactorySpaceStationPlaneFilter_Name", "FactorySpaceStationPlaneFilter_Desc", "assets/gigastations/icon_collector", 2703);
             collector.BuildInGas = true;
 
             //ProtoRegistry.RegisterRecipe(412, ERecipeType.Assemble, 3600, new[] { 2103, 1205, 1406, 2207 }, new[] { 1, 50, 20, 20 }, new[] { collector.ID },
@@ -118,7 +118,7 @@ namespace GigaStations
                 1606
             );
 
-            collectorModel = ProtoRegistry.RegisterModel(302, collector, "prefab.asset", null, new[] { 18, 11, 32, 1 }, 607);//, 2, new[] { 2105, 0 });
+            collectorModel = ProtoRegistry.RegisterModel(302, collector, "Entities/Prefabs/interstellar-logistic-station", null, new[] { 18, 11, 32, 1 }, 607);//, 2, new[] { 2105, 0 });
 
             ProtoRegistry.onLoadingFinished += AddGigaCollector;
 
