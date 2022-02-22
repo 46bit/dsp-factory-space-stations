@@ -223,9 +223,62 @@ namespace GigaStations
             {
                 return;
             }
+
             var recipe = LDB.recipes.Select(__instance.minerId);
             lock (store)
             {
+                StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(factory.planet.star, GigaStationsPlugin.spaceStationsStateRegistryId);
+                if (spaceStationsState.spaceStations[__instance.id].construction is SpaceStationConstruction)
+                {
+                    var construction = (SpaceStationConstruction) spaceStationsState.spaceStations[__instance.id].construction;
+                    if (!construction.Complete())
+                    {
+                        foreach (var itemId in construction.remainingConstructionItems.Keys.ToArray()) {
+                            var storeItem = store.Where(s => s.itemId == itemId).Single();
+                            // Consume all items of that type, as if discarding spares into space
+                            // Reconsider if I gain a way to export lots of spare items after completion
+                            construction.Provide(itemId, storeItem.count);
+                            storeItem.count = 0;
+                        }
+                        if (!construction.Complete())
+                        {
+                            return;
+                        }
+
+                        var maxStorage = GigaStationsPlugin.ilsMaxStorage + factory.gameData.history.remoteStationExtraStorage;
+
+                        // FIXME: Handle warpers or antimatter rods being part of the recipe
+                        var recipeStorage = new StationStore[recipe.Items.Length + recipe.Results.Length];
+                        for (var i = 0; i < recipe.Items.Length; i++)
+                        {
+                            recipeStorage[i].itemId = recipe.Items[i];
+                            recipeStorage[i].localLogic = ELogisticStorage.Demand;
+                            recipeStorage[i].remoteLogic = ELogisticStorage.Demand;
+                            recipeStorage[i].max = maxStorage;
+                        }
+                        for (var i = 0; i < recipe.Results.Length; i++)
+                        {
+                            recipeStorage[i + recipe.Items.Length].itemId = recipe.Results[i];
+                            recipeStorage[i + recipe.Items.Length].localLogic = ELogisticStorage.Supply;
+                            recipeStorage[i + recipe.Items.Length].remoteLogic = ELogisticStorage.Supply;
+                            recipeStorage[i + recipe.Items.Length].max = maxStorage;
+                        }
+
+                        // FIXME: Assert that stationComponent storage and slots are same length
+                        var recipeSlots = new SlotData[recipeStorage.Length];
+                        for (var i = 0; i < recipeStorage.Length; i++)
+                        {
+                            recipeSlots[i].storageIdx = 2 + i;
+                        }
+
+                        // FIXME: Lock
+                        __instance.storage = __instance.storage.Take(2).Concat(recipeStorage).ToArray();
+                        __instance.slots = __instance.slots.Take(2).Concat(recipeSlots).ToArray();
+                        factory.transport.RefreshTraffic(__instance.id);
+                        factory.gameData.galacticTransport.RefreshTraffic(__instance.gid);
+                    }
+                }
+
                 if (store.Length < 2 + recipe.Items.Length + recipe.Results.Length) {
                     GigaStationsPlugin.logger.LogError("store was not long enough!");
                     GigaStationsPlugin.logger.LogError(store.Length);
