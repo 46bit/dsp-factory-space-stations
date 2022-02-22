@@ -143,7 +143,11 @@ namespace GigaStations
 
         void AddGigaCollector()
         {
+            collectorModel.prefabDesc.isStation = true;
+            collectorModel.prefabDesc.isStellarStation = true;
             collectorModel.prefabDesc.isCollectStation = false;
+            collectorModel.prefabDesc.isPowerConsumer = false;
+
             collectorModel.prefabDesc.workEnergyPerTick = 3333334;
             //workEnergyPerTick / ((double)buildPreview.desc.stationCollectSpeed > 0
             collectorModel.prefabDesc.stationMaxItemCount = ilsMaxStorage;
@@ -151,13 +155,14 @@ namespace GigaStations
             collectorModel.prefabDesc.stationMaxDroneCount = ilsMaxDrones;
             collectorModel.prefabDesc.stationMaxShipCount = ilsMaxVessels;
             collectorModel.prefabDesc.stationMaxEnergyAcc = Convert.ToInt64(ilsMaxAcuGJ * 1000000000);
+            // FIXME: Add other types of factories (different machines and recipes)
+            collectorModel.prefabDesc.assemblerRecipeType = ERecipeType.Assemble;
 
             //Make Giga stations blue
             Material newMat = Instantiate(collectorModel.prefabDesc.lodMaterials[0][0]);
             newMat.color = stationColor;
             collectorModel.prefabDesc.lodMaterials[0][0] = newMat;
             // Set MaxWarpers in station init!!!!!
-
 
         }
 

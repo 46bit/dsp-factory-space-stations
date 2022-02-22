@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System;
 using HarmonyLib;
 using UnityEngine;
 
@@ -108,7 +109,6 @@ namespace GigaStations
             int yPos = stationComponent.isVeinCollector ? -190 : -90;
             scrollTrs.anchoredPosition = new Vector2(scrollTrs.anchoredPosition.x, yPos);
 
-
             if (itemProto.ID != GigaStationsPlugin.collector.ID)
             {
                 foreach (UIStationStorage slot in __instance.storageUIs)
@@ -176,6 +176,12 @@ namespace GigaStations
                         __instance.storageUIs[i]._Close();
                     }
                     __instance.storageUIs[i].ClosePopMenu();
+                }
+
+                if (stationComponent.minerId == 0)
+                {
+                    ERecipeType assemblerRecipeType = itemProto.prefabDesc.assemblerRecipeType;
+                    UIRecipePicker.Popup(__instance.windowTrans.anchoredPosition + new Vector2(-300f, -135f), new Action<RecipeProto>(recipe => UIStationWindowPatch.OnRecipePickerReturn(__instance, recipe)), assemblerRecipeType);
                 }
             }
         }
@@ -302,17 +308,15 @@ namespace GigaStations
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(UIStationWindow), "_OnCreate")]
-        public static bool _OnCreatePrefix(UIStationWindow __instance)
+        public static void _OnCreatePrefix(UIStationWindow __instance)
         {
-            // do always
-
             //part of 1% sliderstep fix
             __instance.minDeliverDroneSlider.maxValue = 100;
             __instance.minDeliverVesselSlider.maxValue = 100;
 
             GameObject prefab = GigaStationsPlugin.resource.bundle.LoadAsset<GameObject>("assets/gigastations/ui/station-scroll.prefab");
 
-            GameObject scrollPane = Object.Instantiate(prefab, __instance.transform, false);
+            GameObject scrollPane = UnityEngine.Object.Instantiate(prefab, __instance.transform, false);
             scrollTrs = (RectTransform)scrollPane.transform;
 
             scrollTrs.anchorMin = Vector2.up;
@@ -327,13 +331,58 @@ namespace GigaStations
             __instance.storageUIs = new UIStationStorage[12];
             for (int i = 0; i < __instance.storageUIs.Length; i++)
             {
-                __instance.storageUIs[i] = Object.Instantiate(__instance.storageUIPrefab, contentTrs);
+                __instance.storageUIs[i] = UnityEngine.Object.Instantiate(__instance.storageUIPrefab, contentTrs);
                 __instance.storageUIs[i].stationWindow = __instance;
                 __instance.storageUIs[i]._Create();
             }
             __instance.veinCollectorPanel._Create();
+        }
 
-            return false;
+        private static void OnRecipePickerReturn(UIStationWindow __instance, RecipeProto recipe)
+        {
+            StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
+            ItemProto itemProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
+            if (itemProto.ID != GigaStationsPlugin.collector.ID) // not my stations
+            {
+                return;
+            }
+
+            var maxStorage = GigaStationsPlugin.ilsMaxStorage + __instance.factory.gameData.history.remoteStationExtraStorage;
+
+            // FIXME: Handle warpers or antimatter rods being part of the recipe
+            var recipeStorage = new StationStore[recipe.Items.Length + recipe.Results.Length];
+            for (var i = 0; i < recipe.Items.Length; i++)
+            {
+                __instance.storageUIs[2 + i].OnItemPickerReturn(LDB.items.Select(recipe.Items[i]));
+                recipeStorage[i].itemId = recipe.Items[i];
+                recipeStorage[i].localLogic = ELogisticStorage.Demand;
+                recipeStorage[i].remoteLogic = ELogisticStorage.Demand;
+                recipeStorage[i].max = maxStorage;
+            }
+            for (var i = 0; i < recipe.Results.Length; i++)
+            {
+                recipeStorage[i + recipe.Items.Length].itemId = recipe.Results[i];
+                recipeStorage[i + recipe.Items.Length].localLogic = ELogisticStorage.Supply;
+                recipeStorage[i + recipe.Items.Length].remoteLogic = ELogisticStorage.Supply;
+                recipeStorage[i + recipe.Items.Length].max = maxStorage;
+            }
+
+            // FIXME: Assert that stationComponent storage and slots are same length
+            var recipeSlots = new SlotData[recipeStorage.Length];
+            for (var i = 0; i < recipeStorage.Length; i++)
+            {
+                recipeSlots[i].storageIdx = i + stationComponent.slots.Length;
+            }
+            // FIXME: Lock?
+            stationComponent.storage = stationComponent.storage.AddRangeToArray(recipeStorage);
+            stationComponent.slots = stationComponent.slots.AddRangeToArray(recipeSlots);
+
+            // FIXME: Stop abusing a field to store the recipe ID
+            stationComponent.minerId = recipe.ID;
+
+            __instance.factory.transport.RefreshTraffic(stationComponent.id);
+            __instance.factory.gameData.galacticTransport.RefreshTraffic(stationComponent.gid);
+            __instance.OnStationIdChange();
         }
     }
 }

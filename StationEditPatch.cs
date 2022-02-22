@@ -135,32 +135,17 @@ namespace GigaStations
             __instance.warperMaxCount = GigaStationsPlugin.ilsMaxWarps;
             __instance.energyPerTick = 1000000;
 
-            __instance.storage = new StationStore[2 + 2 + 1];
-            // demand casimir crystals
-            __instance.storage[0].itemId = 1126;
+            __instance.storage = new StationStore[2];
+            // demand antimatter rods
+            __instance.storage[0].itemId = 1803;
             __instance.storage[0].localLogic = ELogisticStorage.Demand;
             __instance.storage[0].remoteLogic = ELogisticStorage.Demand;
-            __instance.storage[0].max = GigaStationsPlugin.ilsMaxStorage;
-            // demand titanium glass
-            __instance.storage[1].itemId = 1119;
+            __instance.storage[0].max = 750;
+            // demand warpers
+            __instance.storage[1].itemId = 1210;
             __instance.storage[1].localLogic = ELogisticStorage.Demand;
             __instance.storage[1].remoteLogic = ELogisticStorage.Demand;
-            __instance.storage[1].max = GigaStationsPlugin.ilsMaxStorage;
-            // supply plane filters
-            __instance.storage[2].itemId = 1304;
-            __instance.storage[2].localLogic = ELogisticStorage.Supply;
-            __instance.storage[2].remoteLogic = ELogisticStorage.Supply;
-            __instance.storage[2].max = GigaStationsPlugin.ilsMaxStorage;
-            // demand warpers
-            __instance.storage[3].itemId = 1210;
-            __instance.storage[3].localLogic = ELogisticStorage.Demand;
-            __instance.storage[3].remoteLogic = ELogisticStorage.Demand;
-            __instance.storage[3].max = 1000;
-            // demand antimatter rods
-            __instance.storage[4].itemId = 1803;
-            __instance.storage[4].localLogic = ELogisticStorage.Demand;
-            __instance.storage[4].remoteLogic = ELogisticStorage.Demand;
-            __instance.storage[4].max = 1000;
+            __instance.storage[1].max = 600;
 
             __instance.slots = new SlotData[__instance.storage.Length];
             for (var i = 0; i < __instance.storage.Length; i++)
@@ -178,73 +163,78 @@ namespace GigaStations
             {
                 return;
             }
-            
-            var planeFilterRecipe = LDB.recipes.Select(38);
+
+            // Simulate getting energy from antimatter rods
+            // No state available, so removing them probabilistically for now
             StationStore[] store = __instance.storage;
             lock (store)
             {
-                if (__instance.storage[4].count == 0)
+                if (__instance.storage[0].count == 0)
                 {
                     __instance.energyPerTick = 0;
                 }
-                else
-                {
+                else if (__instance.energy < __instance.energyMax) {
                     __instance.energyPerTick = 1_500_000_000;
                     var rng = new System.Random();
-                    if (rng.Next((int) Math.Round(1.0 / dt)) == 0)
+                    if (rng.Next((int)Math.Round(1.0 / dt)) == 0)
                     {
-                        store[4].inc -= 1;
-                        store[4].count -= 1;
+                        store[0].inc -= 1;
+                        store[0].count -= 1;
                     }
                 }
                 __instance.energy = Math.Min(__instance.energyMax, __instance.energy + (int)Math.Round(__instance.energyPerTick * dt));
+            }
 
-                if (store[2].count >= store[2].max)
-                {
+            // FIXME: Stop abusing minerId field to store recipe ID
+            if (__instance.minerId == 0)
+            {
+                return;
+            }
+            var recipe = LDB.recipes.Select(__instance.minerId);
+            lock (store)
+            {
+                if (store.Length < 2 + recipe.Items.Length + recipe.Results.Length) {
+                    GigaStationsPlugin.logger.LogError("store was not long enough!");
+                    GigaStationsPlugin.logger.LogError(store.Length);
+                    GigaStationsPlugin.logger.LogError(recipe.Items.Length + recipe.Results.Length);
                     return;
                 }
 
-                var rateOfProduction = 30 * 8;
-                var maxProductions = rateOfProduction;
-                for (int i = 0; i < planeFilterRecipe.Items.Length; i++)
+                // Stop producing if any recipe results are full
+                // FIXME: Be willing to dump some things like hydrogen
+                for (int i = 0; i < recipe.Results.Length; i++)
                 {
-                    var itemId = planeFilterRecipe.Items[i];
-                    var requiredForOne = planeFilterRecipe.ItemCounts[i];
-                    var present = store.Where(s => s.itemId == itemId).Single().count;
-                    var possibleProductions = present / requiredForOne;
-                    maxProductions = Math.Min(maxProductions, possibleProductions);
+                    if (store[2 + i + recipe.Items.Length].count >= store[2 + i + recipe.Items.Length].max)
+                    {
+                        return;
+                    }
                 }
 
-                // FIXME: Work for multiple-results
+                var maxRateOfProduction = 30 * 8;
+                var maxProductions = maxRateOfProduction;
+                for (int i = 0; i < recipe.Items.Length; i++)
+                {
+                    var possibleProductionsFromItem = store[2 + i].count / recipe.ItemCounts[i];
+                    maxProductions = Math.Min(maxProductions, possibleProductionsFromItem);
+                }
+                var energyPerProduction = 1_000_000_000 / maxRateOfProduction;
+                var possibleProductionsFromEnergy = __instance.energy / energyPerProduction;
+                maxProductions = Math.Min(maxProductions, (int) possibleProductionsFromEnergy);
+
                 var producedSinceLastTick = (int)Math.Round(maxProductions * dt);
-
-                var neededEnergy = (1_000_000_000 / rateOfProduction) * producedSinceLastTick;
-                if (__instance.energy < neededEnergy)
+                for (int i = 0; i < recipe.Items.Length; i++)
                 {
-                    return;
+                    var itemConsumed = producedSinceLastTick * recipe.ItemCounts[i];
+                    store[2 + i].inc -= itemConsumed;
+                    store[2 + i].count -= itemConsumed;
                 }
-
-                // FIXME: Accumulate the floating point error somewhere?
-                store[2].inc += producedSinceLastTick * planeFilterRecipe.ResultCounts[0];
-                store[2].count += producedSinceLastTick * planeFilterRecipe.ResultCounts[0];
-                GigaStationsPlugin.logger.LogInfo(producedSinceLastTick);
-
-                store[0].inc -= producedSinceLastTick;
-                store[1].inc -= producedSinceLastTick;
-                store[0].count -= producedSinceLastTick;
-                store[1].count -= producedSinceLastTick;
-
-                __instance.energy -= neededEnergy;
-
-
-                /*for (int i = 0; i < planeFilterRecipe.Items.Length; i++)
+                for (int i = 0; i < recipe.Results.Length; i++)
                 {
-                    var itemId = planeFilterRecipe.Items[i];
-                    var requiredForOne = planeFilterRecipe.ItemCounts[i];
-                    var ingredientStorage = store.Where(s => s.itemId == itemId).Single();
-                    ingredientStorage.inc -= producedSinceLastTick * requiredForOne;
-                    ingredientStorage.count -= producedSinceLastTick * requiredForOne;
-                }*/
+                    var itemProduced = producedSinceLastTick * recipe.ResultCounts[i];
+                    store[2 + recipe.Items.Length + i].inc += itemProduced;
+                    store[2 + recipe.Items.Length + i].count += itemProduced;
+                }
+                __instance.energy -= energyPerProduction * producedSinceLastTick;
             }
         }
 
@@ -267,7 +257,7 @@ namespace GigaStations
                 }
         */
 
-            [HarmonyPrefix]
+        [HarmonyPrefix]
         [HarmonyPatch(typeof(StationComponent), "UpdateNeeds")]
         public static bool UpdateNeeds(StationComponent __instance)
         {
