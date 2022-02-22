@@ -308,7 +308,7 @@ namespace GigaStations
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(UIStationWindow), "_OnCreate")]
-        public static void _OnCreatePrefix(UIStationWindow __instance)
+        public static bool _OnCreatePrefix(UIStationWindow __instance)
         {
             //part of 1% sliderstep fix
             __instance.minDeliverDroneSlider.maxValue = 100;
@@ -336,6 +336,8 @@ namespace GigaStations
                 __instance.storageUIs[i]._Create();
             }
             __instance.veinCollectorPanel._Create();
+
+            return false;
         }
 
         private static void OnRecipePickerReturn(UIStationWindow __instance, RecipeProto recipe)
