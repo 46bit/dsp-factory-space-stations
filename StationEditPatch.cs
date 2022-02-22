@@ -271,9 +271,15 @@ namespace GigaStations
                             recipeSlots[i].storageIdx = 2 + i;
                         }
 
+                        // Messy fix to prevent glitches when construction items are also part of the production items
+                        __instance.storage = __instance.storage.Take(2).ToArray();
+                        __instance.slots = __instance.slots.Take(2).ToArray();
+                        factory.transport.RefreshTraffic(__instance.id);
+                        factory.gameData.galacticTransport.RefreshTraffic(__instance.gid);
+
                         // FIXME: Lock
-                        __instance.storage = __instance.storage.Take(2).Concat(recipeStorage).ToArray();
-                        __instance.slots = __instance.slots.Take(2).Concat(recipeSlots).ToArray();
+                        __instance.storage = __instance.storage.AddRangeToArray(recipeStorage);
+                        __instance.slots = __instance.slots.AddRangeToArray(recipeSlots);
                         factory.transport.RefreshTraffic(__instance.id);
                         factory.gameData.galacticTransport.RefreshTraffic(__instance.gid);
                     }
