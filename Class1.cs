@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Security;
 using System.Security.Permissions;
+using System.Collections.Generic;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -22,8 +23,7 @@ namespace GigaStations
     [BepInDependency(CommonAPIPlugin.GUID)]
     [BepInPlugin(MODGUID, MODNAME, VERSION)]
     [BepInProcess("DSPGAME.exe")]
-
-    [CommonAPISubmoduleDependency(nameof(ProtoRegistry), nameof(UtilSystem))]
+    [CommonAPISubmoduleDependency(nameof(ProtoRegistry), nameof(UtilSystem), nameof(StarExtensionSystem))]
     public class GigaStationsPlugin : BaseUnityPlugin
     {
 
@@ -34,7 +34,7 @@ namespace GigaStations
         public const string LDB_TOOL_GUID = "me.xiaoye97.plugin.Dyson.LDBTool";
         public const string WARPERS_MOD_GUID = "ShadowAngel.DSP.DistributeSpaceWarper";
 
-
+        public static int spaceStationsStateRegistryId;
 
         public static ManualLogSource logger;
         public static int gridXCount { get; set; } = 1;
@@ -118,6 +118,8 @@ namespace GigaStations
 
             ProtoRegistry.onLoadingFinished += AddGigaCollector;
 
+            spaceStationsStateRegistryId = CommonAPI.Systems.StarExtensionSystem.registry.Register("space_stations_state", typeof(StarSpaceStationsState));
+
             Harmony harmony = new Harmony("com.46bit.dsp-factory-space-stations-plugin");
             harmony.PatchAll(typeof(StationEditPatch));
             harmony.PatchAll(typeof(SaveFixPatch));
@@ -158,6 +160,205 @@ namespace GigaStations
             newMat.color = stationColor;
             collectorModel.prefabDesc.lodMaterials[0][0] = newMat;
             // Set MaxWarpers in station init!!!!!
+        }
+    }
+
+    public struct SpaceStationConstruction : ISerializeState
+    {
+        public Dictionary<int, int> remainingConstructionItems;
+
+        public void FromRecipe(RecipeProto recipe, int productionRate)
+        {
+            // FIXME: Add support for other recipe types
+            Assert.Equals(recipe.Type, ERecipeType.Assemble);
+
+            remainingConstructionItems = new Dictionary<int, int>();
+
+            // Allow no output item's rate to exceed productionRate
+            var maxProductionsPerSecond = productionRate;
+            for (int i = 0; i < recipe.ResultCounts.Length; i++)
+            {
+                maxProductionsPerSecond = Math.Min(maxProductionsPerSecond, productionRate / recipe.ResultCounts[i]);
+            }
+
+            var secondsPerProduction = recipe.TimeSpend / 60.0;
+            var assemblerSpeedDivider = LDB.items.Select(2305).prefabDesc.assemblerSpeed / 10000.0;
+            var neededAssemblerMk3 = maxProductionsPerSecond * secondsPerProduction / assemblerSpeedDivider;
+            remainingConstructionItems.Add(2305, (int)Math.Ceiling(neededAssemblerMk3));
+
+            var neededSorterMk3 = neededAssemblerMk3 * (recipe.Items.Length + recipe.Results.Length);
+            remainingConstructionItems.Add(2013, (int)Math.Ceiling(neededSorterMk3));
+
+            var neededBeltMk3 = neededSorterMk3 * 6;
+            remainingConstructionItems.Add(2003, (int)Math.Ceiling(neededBeltMk3));
+
+            var neededFrames = neededAssemblerMk3 * 4;
+            remainingConstructionItems.Add(1125, (int)Math.Ceiling(neededFrames));
+
+            var neededTurbines = neededAssemblerMk3 / 2;
+            remainingConstructionItems.Add(1204, (int)Math.Ceiling(neededTurbines));
+        }
+
+        public int Provide(int itemId, int count)
+        {
+            if (remainingConstructionItems.ContainsKey(itemId))
+            {
+                var result = remainingConstructionItems[itemId] - count;
+                if (result < 0)
+                {
+                    remainingConstructionItems[itemId] = 0;
+                    return Math.Abs(result);
+                }
+                else
+                {
+                    remainingConstructionItems[itemId] = result;
+                    return 0;
+                }
+            }
+            else
+            {
+                return count;
+            }
+        }
+
+        public bool Complete()
+        {
+            foreach (var item in remainingConstructionItems)
+            {
+                if (item.Value > 0)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public void Free()
+        {
+            remainingConstructionItems = null;
+        }
+
+        public void Import(BinaryReader r)
+        {
+            remainingConstructionItems = new Dictionary<int, int>();
+
+            var remainingConstructionItemsCursor = r.ReadInt32();
+            for (int i = 1; i < remainingConstructionItemsCursor; i++)
+            {
+                var itemId = r.ReadInt32();
+                var count = r.ReadInt32();
+                remainingConstructionItems[itemId] = count;
+            }
+        }
+
+        public void Export(BinaryWriter w)
+        {
+            w.Write(remainingConstructionItems.Count);
+            foreach (var item in remainingConstructionItems)
+            {
+                w.Write(item.Key);
+                w.Write(item.Value);
+            }
+        }
+    }
+
+    public class SpaceStationState : ISerializeState
+    {
+        public int stationComponentId;
+        public SpaceStationConstruction? construction;
+
+        public void Init(int stationComponentId)
+        {
+            this.stationComponentId = stationComponentId;
+        }
+
+        public void Free()
+        {
+            stationComponentId = 0;
+            construction = null;
+        }
+
+        public void Import(BinaryReader r)
+        {
+            stationComponentId = r.ReadInt32();
+            if (r.ReadByte() == 1)
+            {
+                construction = new SpaceStationConstruction();
+                construction?.Import(r);
+            }
+        }
+
+        public void Export(BinaryWriter w)
+        {
+            w.Write(stationComponentId);
+            if (construction == null)
+            {
+                w.Write((byte)0);
+            }
+            else
+            {
+                w.Write((byte)1);
+                construction?.Export(w);
+            }
+        }
+    }
+
+    public class StarSpaceStationsState : IStarExtension
+    {
+        public int id;
+
+        // FIXME: Switch to a CommonAPI Pool once no longer reusing StationComponent and its IDs
+        public Dictionary<int, SpaceStationState> spaceStations;
+
+        public void Init(StarData star)
+        {
+            id = star.id;
+            spaceStations = new Dictionary<int, SpaceStationState>();
+        }
+
+        public void Free()
+        {
+            id = 0;
+            foreach (var pair in spaceStations)
+            {
+                pair.Value.Free();
+            }
+            spaceStations = null;
+        }
+
+        public void Import(BinaryReader r)
+        {
+            id = r.ReadInt32();
+
+            spaceStations = new Dictionary<int, SpaceStationState>();
+            var spaceStationsCursor = r.ReadInt32();
+            for (int i = 1; i < spaceStationsCursor; i++)
+            {
+                var spaceStationId = r.ReadInt32();
+                if (r.ReadByte() != 1) continue;
+                var spaceStationState = new SpaceStationState();
+                spaceStationState.Import(r);
+                spaceStations[spaceStationId] = spaceStationState;
+            }
+        }
+
+        public void Export(BinaryWriter w)
+        {
+            w.Write(id);
+            w.Write(spaceStations.Count);
+            foreach (var item in spaceStations)
+            {
+                w.Write(item.Key);
+                if (item.Value == null)
+                {
+                    w.Write((byte)0);
+                }
+                else
+                {
+                    w.Write((byte)1);
+                    item.Value.Export(w);
+                }
+            }
         }
     }
 }

@@ -347,29 +347,29 @@ namespace GigaStations
                 return;
             }
 
+            StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(__instance.factory.planet.star, GigaStationsPlugin.spaceStationsStateRegistryId);
+            spaceStationsState.spaceStations[stationComponent.id] = new SpaceStationState();
+            var construction = new SpaceStationConstruction();
+            construction.FromRecipe(recipe, 8 * 30);
+            spaceStationsState.spaceStations[stationComponent.id].construction = construction;
+
             var maxStorage = GigaStationsPlugin.ilsMaxStorage + __instance.factory.gameData.history.remoteStationExtraStorage;
 
             // FIXME: Handle warpers or antimatter rods being part of the recipe
-            var recipeStorage = new StationStore[recipe.Items.Length + recipe.Results.Length];
-            for (var i = 0; i < recipe.Items.Length; i++)
+            var recipeStorage = new StationStore[construction.remainingConstructionItems.Count];
+            int i = 0;
+            foreach (var item in construction.remainingConstructionItems)
             {
-                __instance.storageUIs[2 + i].OnItemPickerReturn(LDB.items.Select(recipe.Items[i]));
-                recipeStorage[i].itemId = recipe.Items[i];
+                recipeStorage[i].itemId = item.Key;
                 recipeStorage[i].localLogic = ELogisticStorage.Demand;
                 recipeStorage[i].remoteLogic = ELogisticStorage.Demand;
-                recipeStorage[i].max = maxStorage;
-            }
-            for (var i = 0; i < recipe.Results.Length; i++)
-            {
-                recipeStorage[i + recipe.Items.Length].itemId = recipe.Results[i];
-                recipeStorage[i + recipe.Items.Length].localLogic = ELogisticStorage.Supply;
-                recipeStorage[i + recipe.Items.Length].remoteLogic = ELogisticStorage.Supply;
-                recipeStorage[i + recipe.Items.Length].max = maxStorage;
+                recipeStorage[i].max = (int) Math.Min(maxStorage, item.Value);
+                i++;
             }
 
             // FIXME: Assert that stationComponent storage and slots are same length
-            var recipeSlots = new SlotData[recipeStorage.Length];
-            for (var i = 0; i < recipeStorage.Length; i++)
+            var recipeSlots = new SlotData[construction.remainingConstructionItems.Count];
+            for (i = 0; i < recipeSlots.Length; i++)
             {
                 recipeSlots[i].storageIdx = i + stationComponent.slots.Length;
             }
