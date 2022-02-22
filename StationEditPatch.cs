@@ -102,6 +102,39 @@ namespace GigaStations
                     return matcher.InstructionEnumeration();
                 }*/
 
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(StationComponent), "Init")]
+        public static void InitPostfix(StationComponent __instance)
+        {
+            if (__instance.isCollector)
+            {
+                var store = __instance.storage;
+                lock(store)
+                {
+                    for (int i = 0; i < store.Length; i++)
+                    {
+                        store[i].localLogic = ELogisticStorage.Supply;
+                    }
+                }
+            }
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(StationComponent), "Import")]
+        public static void ImportPostfix(StationComponent __instance)
+        {
+            if (__instance.isCollector)
+            {
+                var store = __instance.storage;
+                lock (store)
+                {
+                    for (int i = 0; i < store.Length; i++)
+                    {
+                        store[i].localLogic = ELogisticStorage.Supply;
+                    }
+                }
+            }
+        }
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(PowerSystem), "NewConsumerComponent")]
