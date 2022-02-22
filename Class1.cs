@@ -81,44 +81,40 @@ namespace GigaStations
             ilsMaxAcuGJ = Config.Bind("-|1|- ILS", "-| 5 Max. Accu Capacity (GJ)", 50, "The Stations maximum Accumulator Capacity in GJ.\nVanilla: 12 GJ").Value;
             ilsMaxWarps = Config.Bind("-|1|- ILS", "-| 6 Max. Warps", 150, "The maximum Warp Cells amount.\nVanilla: 50").Value;
 
-
-            ProtoRegistry.RegisterString("FactorySpaceStationPlaneFilter_Name", "Plane Filters");
-            ProtoRegistry.RegisterString("FactorySpaceStationPlaneFilter_Desc", "Space station near a gas giant producing Plane Filters.");
-
             ProtoRegistry.RegisterString("ModificationWarn", "  - [GigaStationsUpdated] Replaced {0} buildings");
-
             ProtoRegistry.RegisterString("CantDowngradeWarn", "Downgrading logistic station is not possible!");
 
+            ProtoRegistry.RegisterString("ConstructionUnit_Name", "Space Construction Unit");
+            ProtoRegistry.RegisterString("ConstructionUnit_Desc", "Component for constructing space structures");
+            var constructionUnit = ProtoRegistry.RegisterItem(2111, "ConstructionUnit_Name", "ConstructionUnit_Desc", "assets/gigastations/icon_ils", 2702, 64);
+            ProtoRegistry.RegisterRecipe(
+                411,
+                ERecipeType.Assemble,
+                1800,
+                new[] { 1502, 5001, 1305, 1127, 2209 },
+                new[] { 50, 20, 15, 10, 2 },
+                new[] { constructionUnit.ID },
+                new[] { 1 },
+                "ConstructionUnit_Desc",
+                1606
+            );
 
-            collector = ProtoRegistry.RegisterItem(2112, "FactorySpaceStationPlaneFilter_Name", "FactorySpaceStationPlaneFilter_Desc", "assets/gigastations/icon_collector", 2703);
+            ProtoRegistry.RegisterString("FactorySpaceStation_Name", "Factory Space Station");
+            ProtoRegistry.RegisterString("FactorySpaceStation_Desc", "Space station that can act as a factory");
+            collector = ProtoRegistry.RegisterItem(2112, "FactorySpaceStation_Name", "FactorySpaceStation_Desc", "assets/gigastations/icon_collector", 2703);
             collector.BuildInGas = true;
-
-            //ProtoRegistry.RegisterRecipe(412, ERecipeType.Assemble, 3600, new[] { 2103, 1205, 1406, 2207 }, new[] { 1, 50, 20, 20 }, new[] { collector.ID },
-            //    new[] { 1 }, "FactorySpaceStationPlaneFilter_Desc", 1606);
-            // IDs from https://dsp-wiki.com/Modding:Recipe_IDs
-            var planeFilterRecipe = LDB.recipes.Select(38);
-            var frameRecipe = LDB.recipes.Select(80);
-            var reinforcedThrusterRecipe = LDB.recipes.Select(21);
-            var assemblingMachineMk3Recipe = LDB.recipes.Select(47);
-
-            var rateOfProduction = 30 * 8;
-            // FIXME: Handle recipes better, stop assuming integer fields are the right ones
-            var requiredAssemblingMachineMk3s = rateOfProduction * planeFilterRecipe.TimeSpend / planeFilterRecipe.ResultCounts[0];
-            var framesToBuild = requiredAssemblingMachineMk3s;
-
             ProtoRegistry.RegisterRecipe(
                 412,
                 ERecipeType.Assemble,
                 4000,
-                new[] { 2305 },//, 1125, 1406 }, //assemblingMachineMk3Recipe.Results[0], frameRecipe.Results[0], reinforcedThrusterRecipe.Results[0] },
-                new[] { 1 },//1, 1 }, // requiredAssemblingMachineMk3s, framesToBuild, 25 },
+                new[] { constructionUnit.ID, 2105, 1502, 2210, 1204, 1406 },
+                new[] { 8, 3, 500, 16, 60, 60 },
                 new[] { collector.ID },
                 new[] { 1 },
-                "FactorySpaceStationPlaneFilter_Desc",
+                "FactorySpaceStation_Desc",
                 1606
             );
-
-            collectorModel = ProtoRegistry.RegisterModel(302, collector, "Entities/Prefabs/interstellar-logistic-station", null, new[] { 18, 11, 32, 1 }, 607);//, 2, new[] { 2105, 0 });
+            collectorModel = ProtoRegistry.RegisterModel(302, collector, "Entities/Prefabs/interstellar-logistic-station", null, new[] { 18, 11, 32, 1 }, 607);
 
             ProtoRegistry.onLoadingFinished += AddGigaCollector;
 
@@ -135,10 +131,9 @@ namespace GigaStations
                 break;
             }
 
-/*            UtilSystem.AddLoadMessageHandler(Save?FixPatch.GetFixMessage);
-*/
-            logger.LogInfo("GigaStations is initialized!");
+            //UtilSystem.AddLoadMessageHandler(Save?FixPatch.GetFixMessage);
 
+            logger.LogInfo("GigaStations is initialized!");
         }
 
         void AddGigaCollector()
@@ -163,8 +158,6 @@ namespace GigaStations
             newMat.color = stationColor;
             collectorModel.prefabDesc.lodMaterials[0][0] = newMat;
             // Set MaxWarpers in station init!!!!!
-
         }
-
     }
 }
