@@ -342,6 +342,11 @@ namespace GigaStations
 
         private static void OnRecipePickerReturn(UIStationWindow __instance, RecipeProto recipe)
         {
+            if (recipe == null)
+            {
+                return;
+            }
+
             StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
             ItemProto itemProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
             if (itemProto.ID != GigaStationsPlugin.collector.ID) // not my stations
@@ -357,30 +362,23 @@ namespace GigaStations
 
             var maxStorage = GigaStationsPlugin.ilsMaxStorage + __instance.factory.gameData.history.remoteStationExtraStorage;
 
-            // FIXME: Handle warpers or antimatter rods being part of the recipe
-            var recipeStorage = new StationStore[construction.remainingConstructionItems.Count];
-            int i = 0;
-            foreach (var item in construction.remainingConstructionItems)
+            var store = stationComponent.storage;
+            lock (store)
             {
-                recipeStorage[i].itemId = item.Key;
-                recipeStorage[i].localLogic = ELogisticStorage.Demand;
-                recipeStorage[i].remoteLogic = ELogisticStorage.Demand;
-                recipeStorage[i].max = (int) Math.Min(maxStorage, item.Value);
-                i++;
-            }
+                // FIXME: Handle warpers or antimatter rods being part of the recipe
+                int i = 2;
+                foreach (var item in construction.remainingConstructionItems)
+                {
+                    store[i].itemId = item.Key;
+                    store[i].localLogic = ELogisticStorage.Demand;
+                    store[i].remoteLogic = ELogisticStorage.Demand;
+                    store[i].max = (int)Math.Min(maxStorage, item.Value);
+                    i++;
+                }
 
-            // FIXME: Assert that stationComponent storage and slots are same length
-            var recipeSlots = new SlotData[construction.remainingConstructionItems.Count];
-            for (i = 0; i < recipeSlots.Length; i++)
-            {
-                recipeSlots[i].storageIdx = i + stationComponent.slots.Length;
+                // FIXME: Stop abusing a field to store the recipe ID
+                stationComponent.minerId = recipe.ID;
             }
-            // FIXME: Lock?
-            stationComponent.storage = stationComponent.storage.AddRangeToArray(recipeStorage);
-            stationComponent.slots = stationComponent.slots.AddRangeToArray(recipeSlots);
-
-            // FIXME: Stop abusing a field to store the recipe ID
-            stationComponent.minerId = recipe.ID;
 
             __instance.factory.transport.RefreshTraffic(stationComponent.id);
             __instance.factory.gameData.galacticTransport.RefreshTraffic(stationComponent.gid);
