@@ -301,28 +301,6 @@ namespace GigaStations
             return (int) (Math.Ceiling(itemCount / 100.0) * 100.0);
         }
 
-        public int Provide(int itemId, int count)
-        {
-            if (remainingConstructionItems.ContainsKey(itemId))
-            {
-                var result = remainingConstructionItems[itemId] - count;
-                if (result < 0)
-                {
-                    remainingConstructionItems[itemId] = 0;
-                    return Math.Abs(result);
-                }
-                else
-                {
-                    remainingConstructionItems[itemId] = result;
-                    return 0;
-                }
-            }
-            else
-            {
-                return count;
-            }
-        }
-
         public bool Complete()
         {
             foreach (var item in remainingConstructionItems)
