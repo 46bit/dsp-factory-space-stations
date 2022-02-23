@@ -17,11 +17,11 @@ namespace DSPFactorySpaceStations
             int protoID = __instance.protoId;
             int modelIndex = __instance.modelIndex;
 
-             if (protoID == DSPFactorySpaceStationsPlugin.collector.ID)
+             if (protoID == DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID)
             {
-                if (modelIndex == DSPFactorySpaceStationsPlugin.collectorModel.ID) return;
+                if (modelIndex == DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID) return;
 
-                __instance.modelIndex = (short)DSPFactorySpaceStationsPlugin.collectorModel.ID;
+                __instance.modelIndex = (short)DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID;
                 updateCounter++;
             }
         }

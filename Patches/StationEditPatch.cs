@@ -141,7 +141,7 @@ namespace DSPFactorySpaceStations
         public static bool NewConsumerComponentPrefix(PowerSystem __instance, ref int entityId, ref long work, ref long idle)
         {
             var x = LDB.items.Select(__instance.factory.entityPool[entityId].protoId).ID;
-            if (x != DSPFactorySpaceStationsPlugin.collector.ID)
+            if (x != DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID)
             {
                 return true;
             }
@@ -156,7 +156,7 @@ namespace DSPFactorySpaceStations
         [HarmonyPatch(typeof(StationComponent), "Init")] // maybe swap with normal VFPreload if not supporting modded tesla towers? or later preloadpostpatch LDBTool one again if already done
         public static void StationComponentInitPostfix(StationComponent __instance, ref int _id, ref int _entityId, ref int _pcId, ref PrefabDesc _desc, ref EntityData[] _entityPool) // Do when LDB is done
         {
-            if (_entityPool[_entityId].protoId != DSPFactorySpaceStationsPlugin.collector.ID) // not my stations
+            if (_entityPool[_entityId].protoId != DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID) 
             {
                 return;
             }
@@ -192,7 +192,7 @@ namespace DSPFactorySpaceStations
         public static void InternalTickLocal(StationComponent __instance, PlanetFactory factory, float dt)
         {
             ItemProto itemProto = LDB.items.Select(factory.entityPool[__instance.entityId].protoId);
-            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID) // not my stations
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID) 
             {
                 return;
             }

@@ -28,7 +28,7 @@ namespace DSPFactorySpaceStations
             StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
             ItemProto itemProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
 
-            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID || !__instance.active)
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID || !__instance.active)
             {
                 return;
             }
@@ -54,7 +54,7 @@ namespace DSPFactorySpaceStations
 
             int storageCount = ((stationComponent.isCollector || stationComponent.isVeinCollector) ? stationComponent.collectionIds.Length : stationComponent.storage.Length);
 
-            int baseYSize = (stationComponent.isStellar || itemProto.ID == DSPFactorySpaceStationsPlugin.collector.ID) ? 376 : 316;
+            int baseYSize = (stationComponent.isStellar || itemProto.ID == DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID) ? 376 : 316;
             if (stationComponent.isCollector)
             {
                 baseYSize = 136;
@@ -69,7 +69,7 @@ namespace DSPFactorySpaceStations
             int yPos = stationComponent.isVeinCollector ? -190 : -90;
             scrollTrs.anchoredPosition = new Vector2(scrollTrs.anchoredPosition.x, yPos);
 
-            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID)
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID)
             {
                 foreach (UIStationStorage slot in __instance.storageUIs)
                 {
@@ -197,7 +197,7 @@ namespace DSPFactorySpaceStations
 
             StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
             ItemProto itemProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
-            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID) // not my stations
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID) 
             {
                 return;
             }

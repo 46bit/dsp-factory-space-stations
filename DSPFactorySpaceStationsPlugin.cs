@@ -31,8 +31,8 @@ namespace DSPFactorySpaceStations
 
         public static int spaceStationsStateRegistryId;
 
-        public static ItemProto collector;
-        public static ModelProto collectorModel;
+        public static ItemProto factorySpaceStationItem;
+        public static ModelProto factorySpaceStationModel;
 
         public static ResourceData resource1;
 
@@ -67,20 +67,33 @@ namespace DSPFactorySpaceStations
 
             ProtoRegistry.RegisterString("FactorySpaceStation_Name", "Factory Space Station");
             ProtoRegistry.RegisterString("FactorySpaceStation_Desc", "Space station that can act as a factory");
-            collector = ProtoRegistry.RegisterItem(2112, "FactorySpaceStation_Name", "FactorySpaceStation_Desc", "dsp_factory_space_stations_icon_collector", 2703);
-            collector.BuildInGas = true;
+            factorySpaceStationItem = ProtoRegistry.RegisterItem(
+                2112, 
+                "FactorySpaceStation_Name", 
+                "FactorySpaceStation_Desc", 
+                "dsp_factory_space_stations_icon_collector", 
+                2703
+               );
+            factorySpaceStationItem.BuildInGas = true;
             ProtoRegistry.RegisterRecipe(
                 412,
                 ERecipeType.Assemble,
                 4000,
                 new[] { constructionUnit.ID, 2105, 1502, 2210, 1204, 1406 },
                 new[] { 8, 3, 500, 16, 60, 60 },
-                new[] { collector.ID },
+                new[] { factorySpaceStationItem.ID },
                 new[] { 1 },
                 "FactorySpaceStation_Desc",
                 1606
             );
-            collectorModel = ProtoRegistry.RegisterModel(302, collector, "dsp_factory_space_stations_tower", null, new[] { 18, 11, 32, 1 }, 607);
+            factorySpaceStationModel = ProtoRegistry.RegisterModel(
+                302, 
+                factorySpaceStationItem, 
+                "dsp_factory_space_stations_tower", 
+                null, 
+                new[] { 18, 11, 32, 1 },
+                607
+            );
 
             spaceStationsStateRegistryId = CommonAPI.Systems.StarExtensionSystem.registry.Register("space_stations_state", typeof(StarSpaceStationsState));
 
@@ -93,39 +106,37 @@ namespace DSPFactorySpaceStations
 
             //UtilSystem.AddLoadMessageHandler(Save?FixPatch.GetFixMessage);
 
-            Log.Info("GigaStations is initialized!");
+            Log.Info("awake");
         }
 
         void OnLoadingFinished()
         {
-            if (!collectorModel.prefabDesc.hasObject)
+            if (!factorySpaceStationModel.prefabDesc.hasObject)
             {
                 throw new Exception("could not load GameObject from asset for factory space station");
             }
 
-            collectorModel.prefabDesc.isStation = true;
-            collectorModel.prefabDesc.isStellarStation = true;
-            collectorModel.prefabDesc.isCollectStation = false;
-            collectorModel.prefabDesc.isPowerConsumer = false;
+            factorySpaceStationModel.prefabDesc.isStation = true;
+            factorySpaceStationModel.prefabDesc.isStellarStation = true;
+            factorySpaceStationModel.prefabDesc.isCollectStation = false;
 
-            collectorModel.prefabDesc.workEnergyPerTick = 3333334;
-            collectorModel.prefabDesc.stationMaxItemCount = 10000;
-            collectorModel.prefabDesc.stationMaxItemKinds = 12;
-            collectorModel.prefabDesc.stationMaxDroneCount = 100;
-            collectorModel.prefabDesc.stationMaxShipCount = 20;
-            collectorModel.prefabDesc.stationMaxEnergyAcc = 50 * 1_000_000_000l;
+            factorySpaceStationModel.prefabDesc.isPowerConsumer = false;
+            factorySpaceStationModel.prefabDesc.workEnergyPerTick = 3333334;
 
-            // FIXME: copy material etc over as well
-            collectorModel.prefabDesc.lodMaterials = LDB.items.Select(2104).prefabDesc.lodMaterials;
-            Material newMat = Instantiate(collectorModel.prefabDesc.lodMaterials[0][0]);
-            newMat.color = new Color(0.3726f, 0.8f, 1f, 1f);
-            collectorModel.prefabDesc.lodMaterials[0][0] = newMat;
+            factorySpaceStationModel.prefabDesc.stationMaxItemCount = 10000;
+            factorySpaceStationModel.prefabDesc.stationMaxItemKinds = 12;
+            factorySpaceStationModel.prefabDesc.stationMaxDroneCount = 100;
+            factorySpaceStationModel.prefabDesc.stationMaxShipCount = 20;
+            factorySpaceStationModel.prefabDesc.stationMaxEnergyAcc = 50 * 1_000_000_000l;
 
-            for (int i = 0; i < collectorModel.prefabDesc.landPoints.Length; i++)
-            {
-                collectorModel.prefabDesc.landPoints[i].x *= 3;
-                collectorModel.prefabDesc.landPoints[i].z *= 3;
-            }
+            var interstellarLogisticsTower = LDB.items.Select(2104);
+            factorySpaceStationModel.prefabDesc.materials = interstellarLogisticsTower.prefabDesc.materials;
+            factorySpaceStationModel.prefabDesc.lodMaterials = interstellarLogisticsTower.prefabDesc.lodMaterials;
+            //Material newMat = Instantiate(collectorModel.prefabDesc.lodMaterials[0][0]);
+            //newMat.color = new Color(0.3726f, 0.8f, 1f, 1f);
+            //collectorModel.prefabDesc.lodMaterials[0][0] = newMat;
+
+            Log.Info("loaded");
         }
     }
 
