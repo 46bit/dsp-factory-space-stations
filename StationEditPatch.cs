@@ -184,6 +184,7 @@ namespace GigaStations
             for (var i = 0; i < __instance.storage.Length; i++)
             {
                 __instance.slots[i].storageIdx = i;
+                __instance.slots[i].
             }
         }
 

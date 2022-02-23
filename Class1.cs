@@ -56,6 +56,7 @@ namespace GigaStations
         public static ModelProto collectorModel;
 
         public static ResourceData resource;
+        public static ResourceData resource2;
 
         void Awake()
         {
@@ -64,9 +65,14 @@ namespace GigaStations
             string pluginfolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             resource = new ResourceData(MODNAME, "gigastations", pluginfolder);
             resource.LoadAssetBundle("gigastations");
-
             ProtoRegistry.AddResource(resource);
-
+            resource2 = new ResourceData(MODNAME, "dsp_factory_space_stations", pluginfolder);
+            resource2.LoadAssetBundle("dsp_factory_space_stations");
+            if (!resource2.HasAssetBundle())
+            {
+                throw new Exception("asset bundle not loaded");
+            }
+            ProtoRegistry.AddResource(resource2);
 
             //General
             gridXCount = Config.Bind("-|0|- General", "-| 1 Grid X Max. Count", 1, new ConfigDescription("Amount of slots visible horizontally.\nIf this value is bigger than 1, layout will form a grid", new AcceptableValueRange<int>(1, 3))).Value;
@@ -86,7 +92,7 @@ namespace GigaStations
 
             ProtoRegistry.RegisterString("ConstructionUnit_Name", "Space Construction Unit");
             ProtoRegistry.RegisterString("ConstructionUnit_Desc", "Component for constructing space structures");
-            var constructionUnit = ProtoRegistry.RegisterItem(2111, "ConstructionUnit_Name", "ConstructionUnit_Desc", "assets/gigastations/icon_ils", 2702, 64);
+            var constructionUnit = ProtoRegistry.RegisterItem(2111, "ConstructionUnit_Name", "ConstructionUnit_Desc", "dsp_factory_space_stations/icon_collector", 2702, 64);
             ProtoRegistry.RegisterRecipe(
                 411,
                 ERecipeType.Assemble,
@@ -101,7 +107,7 @@ namespace GigaStations
 
             ProtoRegistry.RegisterString("FactorySpaceStation_Name", "Factory Space Station");
             ProtoRegistry.RegisterString("FactorySpaceStation_Desc", "Space station that can act as a factory");
-            collector = ProtoRegistry.RegisterItem(2112, "FactorySpaceStation_Name", "FactorySpaceStation_Desc", "assets/gigastations/icon_collector", 2703);
+            collector = ProtoRegistry.RegisterItem(2112, "FactorySpaceStation_Name", "FactorySpaceStation_Desc", "dsp_factory_space_stations_icon_collector", 2703);
             collector.BuildInGas = true;
             ProtoRegistry.RegisterRecipe(
                 412,
@@ -114,10 +120,29 @@ namespace GigaStations
                 "FactorySpaceStation_Desc",
                 1606
             );
-            collectorModel = ProtoRegistry.RegisterModel(302, collector, "Entities/Prefabs/interstellar-logistic-station", null, new[] { 18, 11, 32, 1 }, 607);
+            collectorModel = ProtoRegistry.RegisterModel(302, collector, "dsp_factory_space_stations_tower", null, new[] { 18, 11, 32, 1 }, 607);
 
+            //GameObject gameObject = Resources.Load<GameObject>("factory-space-station-tower");
+            /*if (gameObject == null)
+            {
+                *//*var loadAsset = AssetBundle.LoadFromFile("C:\\Users\\miki\\AppData\\Roaming\\Thunderstore Mod Manager\\DataFolder\\DysonSphereProgram\\profiles\\Default\\BepInEx\\plugins\\Unknown-DSPFactorySpaceStations\\dsp_factory_space_stations2");
+                if (loadAsset == null)
+                {
+                    throw new Exception("invalid model path: unable to load asset bundle");
+                }*//*
+                if (!resource2.bundle.Contains("factory-space-station-tower.prefab"))
+                {
+                    throw new Exception("asset does not exist");
+                }
+                GameObject obj = resource2.bundle.LoadAsset<GameObject>("factory-space-station-tower.prefab");
+                if (obj == null)
+                {
+                    throw new Exception("asset exists but not gameobject");
+                }
+                throw new Exception("invalid bundle? unable to load asset as gameobject");
+            }
+*/
             ProtoRegistry.onLoadingFinished += AddGigaCollector;
-
             spaceStationsStateRegistryId = CommonAPI.Systems.StarExtensionSystem.registry.Register("space_stations_state", typeof(StarSpaceStationsState));
 
             Harmony harmony = new Harmony("com.46bit.dsp-factory-space-stations-plugin");
@@ -140,6 +165,11 @@ namespace GigaStations
 
         void AddGigaCollector()
         {
+            if (!collectorModel.prefabDesc.hasObject)
+            {
+                throw new Exception("could not load GameObject from asset for factory space station");
+            }
+
             collectorModel.prefabDesc.isStation = true;
             collectorModel.prefabDesc.isStellarStation = true;
             collectorModel.prefabDesc.isCollectStation = false;
@@ -155,11 +185,18 @@ namespace GigaStations
             // FIXME: Add other types of factories (different machines and recipes)
             collectorModel.prefabDesc.assemblerRecipeType = ERecipeType.Assemble;
 
-            //Make Giga stations blue
+            // FIXME: copy material etc over as well
+            collectorModel.prefabDesc.lodMaterials = LDB.items.Select(2104).prefabDesc.lodMaterials;
             Material newMat = Instantiate(collectorModel.prefabDesc.lodMaterials[0][0]);
             newMat.color = stationColor;
             collectorModel.prefabDesc.lodMaterials[0][0] = newMat;
             // Set MaxWarpers in station init!!!!!
+
+            for (int i = 0; i < collectorModel.prefabDesc.landPoints.Length; i++)
+            {
+                collectorModel.prefabDesc.landPoints[i].x *= 3;
+                collectorModel.prefabDesc.landPoints[i].z *= 3;
+            }
         }
     }
 
