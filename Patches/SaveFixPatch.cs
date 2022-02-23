@@ -2,12 +2,11 @@ using System.Collections.Generic;
 using System.Reflection.Emit;
 using HarmonyLib;
 
-namespace GigaStations
+namespace DSPFactorySpaceStations
 {
     [HarmonyPatch]
     public static class SaveFixPatch
     {
-
         public static int updateCounter = 0;
 
         [HarmonyPatch(typeof(EntityData), "Import")]
@@ -18,11 +17,11 @@ namespace GigaStations
             int protoID = __instance.protoId;
             int modelIndex = __instance.modelIndex;
 
-             if (protoID == GigaStationsPlugin.collector.ID)
+             if (protoID == DSPFactorySpaceStationsPlugin.collector.ID)
             {
-                if (modelIndex == GigaStationsPlugin.collectorModel.ID) return;
+                if (modelIndex == DSPFactorySpaceStationsPlugin.collectorModel.ID) return;
 
-                __instance.modelIndex = (short)GigaStationsPlugin.collectorModel.ID;
+                __instance.modelIndex = (short)DSPFactorySpaceStationsPlugin.collectorModel.ID;
                 updateCounter++;
             }
         }

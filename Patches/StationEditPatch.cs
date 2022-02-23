@@ -8,7 +8,7 @@ using UnityEngine;
 
 // ReSharper disable InconsistentNaming
 
-namespace GigaStations
+namespace DSPFactorySpaceStations
 {
     [HarmonyPatch]
     public static class StationEditPatch
@@ -141,7 +141,7 @@ namespace GigaStations
         public static bool NewConsumerComponentPrefix(PowerSystem __instance, ref int entityId, ref long work, ref long idle)
         {
             var x = LDB.items.Select(__instance.factory.entityPool[entityId].protoId).ID;
-            if (x != GigaStationsPlugin.collector.ID)
+            if (x != DSPFactorySpaceStationsPlugin.collector.ID)
             {
                 return true;
             }
@@ -156,16 +156,16 @@ namespace GigaStations
         [HarmonyPatch(typeof(StationComponent), "Init")] // maybe swap with normal VFPreload if not supporting modded tesla towers? or later preloadpostpatch LDBTool one again if already done
         public static void StationComponentInitPostfix(StationComponent __instance, ref int _id, ref int _entityId, ref int _pcId, ref PrefabDesc _desc, ref EntityData[] _entityPool) // Do when LDB is done
         {
-            if (_entityPool[_entityId].protoId != GigaStationsPlugin.collector.ID) // not my stations
+            if (_entityPool[_entityId].protoId != DSPFactorySpaceStationsPlugin.collector.ID) // not my stations
             {
                 return;
             }
 
             __instance.needs = new int[13];
 
-            _desc.stationMaxEnergyAcc = Convert.ToInt64(GigaStationsPlugin.ilsMaxAcuGJ * 1000000000);
-            __instance.energyMax = GigaStationsPlugin.ilsMaxAcuGJ * 1000000000;
-            __instance.warperMaxCount = GigaStationsPlugin.ilsMaxWarps;
+            __instance.energyMax = _desc.stationMaxEnergyAcc;
+            __instance.warperMaxCount = 100;
+            // FIXME: Choose sensible value and move these configs to central place
             __instance.energyPerTick = 1000000;
 
             __instance.storage = new StationStore[12];
@@ -192,7 +192,7 @@ namespace GigaStations
         public static void InternalTickLocal(StationComponent __instance, PlanetFactory factory, float dt)
         {
             ItemProto itemProto = LDB.items.Select(factory.entityPool[__instance.entityId].protoId);
-            if (itemProto.ID != GigaStationsPlugin.collector.ID) // not my stations
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID) // not my stations
             {
                 return;
             }
@@ -225,7 +225,7 @@ namespace GigaStations
             }
 
             var recipe = LDB.recipes.Select(__instance.minerId);
-            StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(factory.planet.star, GigaStationsPlugin.spaceStationsStateRegistryId);
+            StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(factory.planet.star, DSPFactorySpaceStationsPlugin.spaceStationsStateRegistryId);
             if (spaceStationsState.spaceStations[__instance.id].construction is SpaceStationConstruction)
             {
                 var construction = (SpaceStationConstruction) spaceStationsState.spaceStations[__instance.id].construction;
@@ -258,7 +258,7 @@ namespace GigaStations
                             return;
                         }
 
-                        var maxStorage = GigaStationsPlugin.ilsMaxStorage + factory.gameData.history.remoteStationExtraStorage;
+                        var maxStorage = itemProto.prefabDesc.stationMaxItemCount + factory.gameData.history.remoteStationExtraStorage;
 
                         for (int i = 2; i < 12; i++) {
                             store[i] = new StationStore();

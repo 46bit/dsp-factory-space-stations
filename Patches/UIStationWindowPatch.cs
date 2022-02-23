@@ -7,7 +7,7 @@ using UnityEngine;
 
 // ReSharper disable InconsistentNaming
 
-namespace GigaStations
+namespace DSPFactorySpaceStations
 {
     [HarmonyPatch]
     public static class UIStationWindowPatch
@@ -28,7 +28,7 @@ namespace GigaStations
             StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
             ItemProto itemProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
 
-            if (itemProto.ID != GigaStationsPlugin.collector.ID || !__instance.active)
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID || !__instance.active)
             {
                 return;
             }
@@ -54,7 +54,7 @@ namespace GigaStations
 
             int storageCount = ((stationComponent.isCollector || stationComponent.isVeinCollector) ? stationComponent.collectionIds.Length : stationComponent.storage.Length);
 
-            int baseYSize = (stationComponent.isStellar || itemProto.ID == GigaStationsPlugin.collector.ID) ? 376 : 316;
+            int baseYSize = (stationComponent.isStellar || itemProto.ID == DSPFactorySpaceStationsPlugin.collector.ID) ? 376 : 316;
             if (stationComponent.isCollector)
             {
                 baseYSize = 136;
@@ -69,7 +69,7 @@ namespace GigaStations
             int yPos = stationComponent.isVeinCollector ? -190 : -90;
             scrollTrs.anchoredPosition = new Vector2(scrollTrs.anchoredPosition.x, yPos);
 
-            if (itemProto.ID != GigaStationsPlugin.collector.ID)
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID)
             {
                 foreach (UIStationStorage slot in __instance.storageUIs)
                 {
@@ -154,98 +154,6 @@ namespace GigaStations
             __instance.energyText.rectTransform.anchoredPosition = new Vector2(Mathf.Round(size * percent + diff), 0.0f);
         }
 
-
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(UIStationWindow), "OnWarperIconClick")]
-        public static bool OnWarperIconClickPrefix(UIStationWindow __instance, ref int obj)
-        {
-            if ((__instance.stationId == 0 || __instance.factory == null))
-            {
-                __instance._Close();
-                return false;
-            }
-
-            StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
-            ItemProto gigaProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
-            if (gigaProto.ID != GigaStationsPlugin.collector.ID)
-            {
-                return true; // not my ILS, return to original code
-            }
-            if (__instance.stationId == 0 || __instance.factory == null)
-            {
-                return false;
-            }
-            if (stationComponent.id != __instance.stationId)
-            {
-                return false;
-            }
-            if (__instance.player.inhandItemId > 0 && __instance.player.inhandItemCount == 0)
-            {
-                __instance.player.SetHandItems(0, 0);
-            }
-            else if (__instance.player.inhandItemId > 0 && __instance.player.inhandItemCount > 0)
-            {
-                int num = 1210;
-                ItemProto itemProto = LDB.items.Select(num);
-                if (__instance.player.inhandItemId != num)
-                {
-                    UIRealtimeTip.Popup("只能放入".Translate() + itemProto.name);
-                    return false;
-                }
-                int num2 = GigaStationsPlugin.ilsMaxWarps;
-                int warperCount = stationComponent.warperCount;
-                int num3 = num2 - warperCount;
-                if (num3 < 0)
-                {
-                    num3 = 0;
-                }
-                int num4 = (__instance.player.inhandItemCount >= num3) ? num3 : __instance.player.inhandItemCount;
-                if (num4 <= 0)
-                {
-                    UIRealtimeTip.Popup("栏位已满".Translate());
-                    return false;
-                }
-                stationComponent.warperCount += num4;
-                __instance.player.AddHandItemCount_Unsafe(-num4);
-                if (__instance.player.inhandItemCount <= 0)
-                {
-                    __instance.player.SetHandItemId_Unsafe(0);
-                    __instance.player.SetHandItemCount_Unsafe(0);
-                }
-            }
-            else if (__instance.player.inhandItemId == 0 && __instance.player.inhandItemCount == 0)
-            {
-                int warperCount2 = stationComponent.warperCount;
-                int num5 = warperCount2;
-                if (num5 <= 0)
-                {
-                    return false;
-                }
-                if (VFInput.shift || VFInput.control)
-                {
-                    num5 = __instance.player.package.AddItemStacked(1210, num5, 0, out int _);
-                    if (warperCount2 != num5)
-                    {
-                        UIRealtimeTip.Popup("无法添加物品".Translate());
-                    }
-                    UIItemup.Up(1210, num5);
-                }
-                else
-                {
-                    __instance.player.SetHandItemId_Unsafe(1210);
-                    __instance.player.SetHandItemCount_Unsafe(num5);
-                }
-                stationComponent.warperCount -= num5;
-                if (stationComponent.warperCount < 0)
-                {
-                    Assert.CannotBeReached();
-                    stationComponent.warperCount = 0;
-                }
-            }
-
-            return false;
-        }
-
         [HarmonyPrefix]
         [HarmonyPatch(typeof(UIStationWindow), "_OnCreate")]
         public static bool _OnCreatePrefix(UIStationWindow __instance)
@@ -254,7 +162,7 @@ namespace GigaStations
             __instance.minDeliverDroneSlider.maxValue = 100;
             __instance.minDeliverVesselSlider.maxValue = 100;
 
-            GameObject prefab = GigaStationsPlugin.resource.bundle.LoadAsset<GameObject>("assets/gigastations/ui/station-scroll.prefab");
+            GameObject prefab = DSPFactorySpaceStationsPlugin.resource1.bundle.LoadAsset<GameObject>("assets/gigastations/ui/station-scroll.prefab");
 
             GameObject scrollPane = UnityEngine.Object.Instantiate(prefab, __instance.transform, false);
             scrollTrs = (RectTransform)scrollPane.transform;
@@ -289,18 +197,18 @@ namespace GigaStations
 
             StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
             ItemProto itemProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
-            if (itemProto.ID != GigaStationsPlugin.collector.ID) // not my stations
+            if (itemProto.ID != DSPFactorySpaceStationsPlugin.collector.ID) // not my stations
             {
                 return;
             }
 
-            StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(__instance.factory.planet.star, GigaStationsPlugin.spaceStationsStateRegistryId);
+            StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(__instance.factory.planet.star, DSPFactorySpaceStationsPlugin.spaceStationsStateRegistryId);
             spaceStationsState.spaceStations[stationComponent.id] = new SpaceStationState();
             var construction = new SpaceStationConstruction();
             construction.FromRecipe(recipe, 8 * 30);
             spaceStationsState.spaceStations[stationComponent.id].construction = construction;
 
-            var maxStorage = GigaStationsPlugin.ilsMaxStorage + __instance.factory.gameData.history.remoteStationExtraStorage;
+            var maxStorage = itemProto.prefabDesc.stationMaxItemCount + __instance.factory.gameData.history.remoteStationExtraStorage;
 
             var store = stationComponent.storage;
             lock (store)
