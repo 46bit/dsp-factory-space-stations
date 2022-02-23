@@ -37,8 +37,6 @@ namespace GigaStations
         public static int spaceStationsStateRegistryId;
 
         public static ManualLogSource logger;
-        public static int gridXCount { get; set; } = 1;
-        public static int gridYCount { get; set; } = 12;
 
         public static Color stationColor { get; set; } = new Color(0.3726f, 0.8f, 1f, 1f);
 
@@ -75,8 +73,6 @@ namespace GigaStations
             ProtoRegistry.AddResource(resource2);
 
             //General
-            gridXCount = Config.Bind("-|0|- General", "-| 1 Grid X Max. Count", 1, new ConfigDescription("Amount of slots visible horizontally.\nIf this value is bigger than 1, layout will form a grid", new AcceptableValueRange<int>(1, 3))).Value;
-            gridYCount = Config.Bind("-|0|- General", "-| 2 Grid Y Max. Count", 5, new ConfigDescription("Amount of slots visible vertically", new AcceptableValueRange<int>(3, 12))).Value;
             stationColor = Config.Bind("-|0|- General", "-| 3 Station Color", new Color(0.3726f, 0.8f, 1f, 1f), "Color tint of giga stations").Value;
 
             //ILS
@@ -176,14 +172,11 @@ namespace GigaStations
             collectorModel.prefabDesc.isPowerConsumer = false;
 
             collectorModel.prefabDesc.workEnergyPerTick = 3333334;
-            //workEnergyPerTick / ((double)buildPreview.desc.stationCollectSpeed > 0
             collectorModel.prefabDesc.stationMaxItemCount = ilsMaxStorage;
             collectorModel.prefabDesc.stationMaxItemKinds = ilsMaxSlots;
             collectorModel.prefabDesc.stationMaxDroneCount = ilsMaxDrones;
             collectorModel.prefabDesc.stationMaxShipCount = ilsMaxVessels;
             collectorModel.prefabDesc.stationMaxEnergyAcc = Convert.ToInt64(ilsMaxAcuGJ * 1000000000);
-            // FIXME: Add other types of factories (different machines and recipes)
-            collectorModel.prefabDesc.assemblerRecipeType = ERecipeType.Assemble;
 
             // FIXME: copy material etc over as well
             collectorModel.prefabDesc.lodMaterials = LDB.items.Select(2104).prefabDesc.lodMaterials;
@@ -206,9 +199,6 @@ namespace GigaStations
 
         public void FromRecipe(RecipeProto recipe, int productionRate)
         {
-            // FIXME: Add support for other recipe types
-            Assert.Equals(recipe.Type, ERecipeType.Assemble);
-
             remainingConstructionItems = new Dictionary<int, int>();
 
             // Allow no output item's rate to exceed productionRate
@@ -217,23 +207,98 @@ namespace GigaStations
             {
                 maxProductionsPerSecond = Math.Min(maxProductionsPerSecond, productionRate / recipe.ResultCounts[i]);
             }
-
             var secondsPerProduction = recipe.TimeSpend / 60.0;
-            var assemblerSpeedDivider = LDB.items.Select(2305).prefabDesc.assemblerSpeed / 10000.0;
-            var neededAssemblerMk3 = maxProductionsPerSecond * secondsPerProduction / assemblerSpeedDivider;
-            remainingConstructionItems.Add(2305, (int)Math.Ceiling(neededAssemblerMk3));
 
-            var neededSorterMk3 = neededAssemblerMk3 * (recipe.Items.Length + recipe.Results.Length);
-            remainingConstructionItems.Add(2013, (int)Math.Ceiling(neededSorterMk3));
+            double neededSorterMk3, neededBeltMk3, neededFrames, neededTurbines;
+            switch (recipe.Type)
+            {
+                case ERecipeType.Assemble:
+                    var assemblerSpeedDivider = LDB.items.Select(2305).prefabDesc.assemblerSpeed / 10000.0;
+                    var neededAssemblerMk3 = maxProductionsPerSecond * secondsPerProduction / assemblerSpeedDivider;
+                    remainingConstructionItems.Add(2305, roundForLogistics(neededAssemblerMk3));
 
-            var neededBeltMk3 = neededSorterMk3 * 6;
-            remainingConstructionItems.Add(2003, (int)Math.Ceiling(neededBeltMk3));
+                    neededSorterMk3 = neededAssemblerMk3 * (recipe.Items.Length + recipe.Results.Length);
+                    neededBeltMk3 = neededSorterMk3 * 6;
+                    neededFrames = neededAssemblerMk3 * 4;
+                    neededTurbines = neededAssemblerMk3 / 2;
+                    break;
+                case ERecipeType.Smelt:
+                    var planeSmelterSpeedDivider = LDB.items.Select(2315).prefabDesc.assemblerSpeed / 10000.0;
+                    var neededPlaneSmelter = maxProductionsPerSecond * secondsPerProduction / planeSmelterSpeedDivider;
+                    remainingConstructionItems.Add(2315, roundForLogistics(neededPlaneSmelter));
 
-            var neededFrames = neededAssemblerMk3 * 4;
-            remainingConstructionItems.Add(1125, (int)Math.Ceiling(neededFrames));
+                    neededSorterMk3 = neededPlaneSmelter * (recipe.Items.Length + recipe.Results.Length);
+                    neededBeltMk3 = neededSorterMk3 * 6;
+                    neededFrames = neededPlaneSmelter * 4;
+                    neededTurbines = neededPlaneSmelter / 2;
+                    break;
+                case ERecipeType.Chemical:
+                    var chemicalPlantSpeedDivider = LDB.items.Select(2309).prefabDesc.assemblerSpeed / 10000.0;
+                    var neededChemicalPlants = maxProductionsPerSecond * secondsPerProduction / chemicalPlantSpeedDivider;
+                    remainingConstructionItems.Add(2309, roundForLogistics(neededChemicalPlants));
 
-            var neededTurbines = neededAssemblerMk3 / 2;
-            remainingConstructionItems.Add(1204, (int)Math.Ceiling(neededTurbines));
+                    neededSorterMk3 = neededChemicalPlants * (recipe.Items.Length + recipe.Results.Length);
+                    neededBeltMk3 = neededSorterMk3 * 10;
+                    neededFrames = neededChemicalPlants * 8;
+                    neededTurbines = neededChemicalPlants;
+                    break;
+                case ERecipeType.Refine:
+                    var refinerySpeedDivider = LDB.items.Select(2308).prefabDesc.assemblerSpeed / 10000.0;
+                    var neededRefineries = maxProductionsPerSecond * secondsPerProduction / refinerySpeedDivider;
+                    remainingConstructionItems.Add(2308, roundForLogistics(neededRefineries));
+
+                    neededSorterMk3 = neededRefineries * (recipe.Items.Length + recipe.Results.Length);
+                    neededBeltMk3 = neededSorterMk3 * 8;
+                    neededFrames = neededRefineries * 8;
+                    neededTurbines = neededRefineries;
+                    break;
+                case ERecipeType.Particle:
+                    var particleColliderSpeedDivider = LDB.items.Select(2310).prefabDesc.assemblerSpeed / 10000.0;
+                    var neededParticleColliders = maxProductionsPerSecond * secondsPerProduction / particleColliderSpeedDivider;
+                    remainingConstructionItems.Add(2310, roundForLogistics(neededParticleColliders));
+
+                    neededSorterMk3 = neededParticleColliders * (recipe.Items.Length + recipe.Results.Length);
+                    neededBeltMk3 = neededSorterMk3 * 10;
+                    neededFrames = neededParticleColliders * 12;
+                    neededTurbines = neededParticleColliders * 1.5;
+                    break;
+                case ERecipeType.Research:
+                    var labSpeedDivider = LDB.items.Select(2901).prefabDesc.assemblerSpeed / 10000.0;
+                    var neededLabs = maxProductionsPerSecond * secondsPerProduction / labSpeedDivider;
+                    remainingConstructionItems.Add(2901, roundForLogistics(neededLabs));
+
+                    neededSorterMk3 = neededLabs * (recipe.Items.Length + recipe.Results.Length);
+                    neededBeltMk3 = neededSorterMk3 * 2;
+                    neededFrames = neededLabs * 6;
+                    neededTurbines = neededLabs / 2;
+                    break;
+                case ERecipeType.Fractionate: // FIXME: Implement nice error rather than failing silently
+                    var fractionatorSpeedDivider = LDB.items.Select(2314).prefabDesc.assemblerSpeed / 10000.0;
+                    var neededFractionators = 0; // maxProductionsPerSecond * secondsPerProduction / fractionatorSpeedDivider;
+                    remainingConstructionItems.Add(2314, roundForLogistics(neededFractionators));
+
+                    neededSorterMk3 = 0;
+                    neededBeltMk3 = neededFractionators * 4;
+                    neededFrames = neededFractionators * 4;
+                    neededTurbines = neededFractionators / 2;
+                    break;
+                default: // Not handling ERecipeType.Exchange but that doesn't seem to be available from UIRecipePicker
+                    throw new Exception("recipe type unsupported");
+            }
+            remainingConstructionItems.Add(2013, roundForLogistics(neededSorterMk3));
+            remainingConstructionItems.Add(2003, roundForLogistics(neededBeltMk3));
+            remainingConstructionItems.Add(1125, roundForLogistics(neededFrames));
+            remainingConstructionItems.Add(1204, roundForLogistics(neededTurbines));
+            GigaStationsPlugin.logger.LogInfo("Requesting construction items: " + string.Join(", ", remainingConstructionItems));
+        }
+
+        // Requesting less than 100 items as the `max` from a logistics station seems to
+        // get rounded down to 0. So round-up. Very reasonable given we were already
+        // discarding leftover constructions items.
+        // FIXME: Move this logic to logistics-specific code
+        private int roundForLogistics(double itemCount)
+        {
+            return (int) (Math.Ceiling(itemCount / 100.0) * 100.0);
         }
 
         public int Provide(int itemId, int count)

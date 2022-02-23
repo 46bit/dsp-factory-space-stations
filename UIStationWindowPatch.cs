@@ -14,40 +14,6 @@ namespace GigaStations
     {
         public static RectTransform contentTrs;
         public static RectTransform scrollTrs;
-/*
-        [HarmonyTranspiler]
-        [HarmonyPatch(typeof(UIStationWindow), "OnMinDeliverVesselValueChange")]
-        [HarmonyPatch(typeof(UIStationWindow), "OnMinDeliverDroneValueChange")]
-        public static IEnumerable<CodeInstruction> Replace10With1Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            CodeMatcher matcher = new CodeMatcher(instructions)
-                .MatchForward(false, new CodeMatch(instr => instr.opcode == OpCodes.Ldc_R4 && Mathf.Approximately((float)instr.operand, 10f)))
-                .SetOperandAndAdvance(1f);
-
-            return matcher.InstructionEnumeration();
-        }
-
-        [HarmonyTranspiler]
-        [HarmonyPatch(typeof(UIStationWindow), "OnStationIdChange")]
-        public static IEnumerable<CodeInstruction> RemoveDivisionBy10(IEnumerable<CodeInstruction> instructions)
-        {
-
-            CodeMatcher matcher = new CodeMatcher(instructions)
-                .MatchForward(false, new CodeMatch(OpCodes.Ldfld, AccessTools.Field(typeof(StationComponent), nameof(StationComponent.deliveryDrones))))
-                .MatchForward(false, new CodeMatch(instr => instr.opcode == OpCodes.Ldc_R4 && Mathf.Approximately((float)instr.operand, 0.1f)))
-                .SetAndAdvance(OpCodes.Nop, null)
-                .Advance(2)
-                .SetAndAdvance(OpCodes.Nop, null);
-
-            matcher
-                .MatchForward(false, new CodeMatch(OpCodes.Ldfld, AccessTools.Field(typeof(StationComponent), nameof(StationComponent.deliveryShips))))
-                .MatchForward(false, new CodeMatch(instr => instr.opcode == OpCodes.Ldc_R4 && Mathf.Approximately((float)instr.operand, 0.1f)))
-                .SetAndAdvance(OpCodes.Nop, null)
-                .Advance(2)
-                .SetAndAdvance(OpCodes.Nop, null);
-
-            return matcher.InstructionEnumeration();
-        }*/
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(UIStationWindow), "OnStationIdChange")]
@@ -60,24 +26,18 @@ namespace GigaStations
             }
 
             StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
-
             ItemProto itemProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
 
-            if (itemProto.ID != GigaStationsPlugin.collector.ID)
+            if (itemProto.ID != GigaStationsPlugin.collector.ID || !__instance.active)
             {
                 return;
             }
 
-            if (!__instance.active) return;
-
-            string text = (!string.IsNullOrEmpty(stationComponent.name))
-                ? stationComponent.name
-                : ((!stationComponent.isStellar)
-                    ? ("Planetary Giga Station #" + stationComponent.id)
-                    : ((stationComponent.isCollector)
-                        ? ("Orbital Giga Collector #" + stationComponent.gid)
-                        : ("Interstellar Giga Station #" + stationComponent.gid)));
-            __state = text;
+            __state = stationComponent.name;
+            if (string.IsNullOrEmpty(__state))
+            {
+                __state = "Factory Space Station #" + stationComponent.gid;
+            }
         }
 
         [HarmonyPostfix]
@@ -128,38 +88,28 @@ namespace GigaStations
 
             if (__instance.active)
             {
-                int verticalCount = storageCount;
                 int newXSize = 600;
 
-                if (GigaStationsPlugin.gridXCount > 1)
+                foreach (UIStationStorage slot in __instance.storageUIs)
                 {
-                    int diff = 526 * (GigaStationsPlugin.gridXCount - 1);
-                    newXSize += diff;
-                    verticalCount = storageCount / GigaStationsPlugin.gridXCount;
+                    slot.popupBoxRect.anchoredPosition = new Vector2(5, 0);
+                }
 
-                    foreach (UIStationStorage slot in __instance.storageUIs)
+                int visibleCount = storageCount;
+                for (int i = storageCount - 1; i >= 0; i--) {
+                    if (stationComponent.storage[i].itemId != 0)
                     {
-                        slot.popupBoxRect.anchoredPosition = new Vector2(-200, 0);
+                        break;
                     }
-                    bool logisticShipWarpDrive = GameMain.history.logisticShipWarpDrive;
-                    __instance.powerGroupRect.sizeDelta = new Vector2((stationComponent.isStellar ? (logisticShipWarpDrive ? 320f : 380f) : 440f) + diff, 40f);
+                    visibleCount--;
                 }
-                else
-                {
-                    foreach (UIStationStorage slot in __instance.storageUIs)
-                    {
-                        slot.popupBoxRect.anchoredPosition = new Vector2(5, 0);
-                    }
-                }
-                int visibleCount = verticalCount > GigaStationsPlugin.gridYCount ? GigaStationsPlugin.gridYCount : verticalCount;
+
                 int newYSize = baseYSize + 76 * visibleCount;
 
                 __instance.windowTrans.sizeDelta = new Vector2(newXSize, newYSize);
 
-                int viewCount = verticalCount < GigaStationsPlugin.gridYCount ? verticalCount : GigaStationsPlugin.gridYCount;
-
-                scrollTrs.sizeDelta = new Vector2(scrollTrs.sizeDelta.x, 76 * viewCount);
-                contentTrs.sizeDelta = new Vector2(contentTrs.sizeDelta.x, 76 * verticalCount);
+                scrollTrs.sizeDelta = new Vector2(scrollTrs.sizeDelta.x, 76 * visibleCount);
+                contentTrs.sizeDelta = new Vector2(contentTrs.sizeDelta.x, 76 * visibleCount);
 
                 for (int i = 0; i < __instance.storageUIs.Length; i++)
                 {
@@ -180,8 +130,7 @@ namespace GigaStations
 
                 if (stationComponent.minerId == 0)
                 {
-                    ERecipeType assemblerRecipeType = itemProto.prefabDesc.assemblerRecipeType;
-                    UIRecipePicker.Popup(__instance.windowTrans.anchoredPosition + new Vector2(-300f, -135f), new Action<RecipeProto>(recipe => UIStationWindowPatch.OnRecipePickerReturn(__instance, recipe)), assemblerRecipeType);
+                    UIRecipePicker.Popup(__instance.windowTrans.anchoredPosition + new Vector2(-300f, -135f), new Action<RecipeProto>(recipe => UIStationWindowPatch.OnRecipePickerReturn(__instance, recipe)));
                 }
             }
         }
@@ -217,25 +166,16 @@ namespace GigaStations
             }
 
             StationComponent stationComponent = __instance.transport.stationPool[__instance.stationId];
-
             ItemProto gigaProto = LDB.items.Select(__instance.factory.entityPool[stationComponent.entityId].protoId);
-
             if (gigaProto.ID != GigaStationsPlugin.collector.ID)
             {
                 return true; // not my ILS, return to original code
             }
-
-
             if (__instance.stationId == 0 || __instance.factory == null)
             {
                 return false;
             }
-
             if (stationComponent.id != __instance.stationId)
-            {
-                return false;
-            }
-            if (!stationComponent.isStellar)
             {
                 return false;
             }

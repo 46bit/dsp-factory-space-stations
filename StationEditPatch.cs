@@ -233,13 +233,25 @@ namespace GigaStations
                 {
                     lock (store)
                     {
-                        foreach (var itemId in construction.remainingConstructionItems.Keys.ToArray()) {
-                            var storeItem = store.Where(s => s.itemId == itemId).Single();
-                            // Consume all items of that type, as if discarding spares into space
-                            // Reconsider if I gain a way to export lots of spare items after completion
-                            construction.Provide(itemId, storeItem.count);
-                            storeItem.count = 0;
-                            storeItem.inc = 0;
+                        for (int i = 2; i < store.Length; i++)
+                        {
+                            if (store[i].itemId == 0)
+                            {
+                                continue;
+                            }
+                            construction.remainingConstructionItems[store[i].itemId] -= store[i].count;
+                            if (construction.remainingConstructionItems[store[i].itemId] <= 0)
+                            {
+                                var unused = -construction.remainingConstructionItems[store[i].itemId];
+                                store[i].count = unused;
+                                store[i].inc = unused;
+                                store[i].max = 0;
+                                construction.remainingConstructionItems[store[i].itemId] = 0;
+                            } else {
+                                store[i].count = 0;
+                                store[i].inc = 0;
+                                store[i].max = Math.Min(store[i].max, construction.remainingConstructionItems[store[i].itemId]);
+                            }
                         }
                         if (!construction.Complete())
                         {
