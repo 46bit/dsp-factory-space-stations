@@ -20,86 +20,92 @@ namespace DSPFactorySpaceStations
 {
     [BepInDependency(CommonAPIPlugin.GUID)]
     [BepInDependency("me.xiaoye97.plugin.Dyson.LDBTool")]
+    [BepInDependency(GIGASTATIONS_GUID)]
     [BepInPlugin(MODGUID, MODNAME, VERSION)]
     [BepInProcess("DSPGAME.exe")]
     [CommonAPISubmoduleDependency(nameof(ProtoRegistry), nameof(UtilSystem), nameof(StarExtensionSystem))]
     public class DSPFactorySpaceStationsPlugin : BaseUnityPlugin
     {
         public const string MODGUID = "46bit.plugin.DSPFactorySpaceStationsPlugin";
-        public const string MODNAME = "DSPFactorySpaceStationsPlugin";
+        public const string MODNAME = "FactorySpaceStations";
         public const string VERSION = "0.0.1";
+
+        public const string GIGASTATIONS_GUID = "org.kremnev8.plugin.GigaStationsUpdated";
 
         public static int spaceStationsStateRegistryId;
 
+        public static ResourceData resourceData;
         public static ItemProto factorySpaceStationItem;
         public static ModelProto factorySpaceStationModel;
-
-        public static ResourceData resource1;
 
         void Awake()
         {
             Log.logger = Logger;
 
-            resource1 = new ResourceData(MODNAME, "gigastations");
-            resource1.LoadAssetBundle("Assets/gigastations");
-            Assert.True(resource1.HasAssetBundle());
-            ProtoRegistry.AddResource(resource1);
+            resourceData = new ResourceData(MODNAME, "dsp_factory_space_stations");
+            resourceData.LoadAssetBundle("Assets\\dsp_factory_space_stations");
+            Assert.True(resourceData.HasAssetBundle());
+            ProtoRegistry.AddResource(resourceData);
 
-            var resource2 = new ResourceData(MODNAME, "dsp_factory_space_stations");
-            resource2.LoadAssetBundle("Assets/dsp_factory_space_stations");
-            Assert.True(resource2.HasAssetBundle());
-            ProtoRegistry.AddResource(resource2);
-
-            ProtoRegistry.RegisterString("ConstructionUnit_Name", "Space Construction Unit");
-            ProtoRegistry.RegisterString("ConstructionUnit_Desc", "Component for constructing space structures");
-            var constructionUnit = ProtoRegistry.RegisterItem(2111, "ConstructionUnit_Name", "ConstructionUnit_Desc", "dsp_factory_space_stations/icon_collector", 2702, 64);
+            ProtoRegistry.RegisterString("ConstructionUnitName", "Space Construction Unit");
+            ProtoRegistry.RegisterString("ConstructionUnitDesc", "Component for constructing space structures");
+            ProtoRegistry.RegisterString("ConstructionUnitRecipeDesc", "Component for constructing space structures");
+            var constructionUnit = ProtoRegistry.RegisterItem(
+                4601,
+                "ConstructionUnitName",
+                "ConstructionUnitDesc",
+                "dsp_factory_space_stations_icon_collector",
+                1607,
+                64
+            );
             ProtoRegistry.RegisterRecipe(
-                411,
+                4601,
                 ERecipeType.Assemble,
                 1800,
-                new[] { 1502, 5001, 1305, 1127, 2209 },
-                new[] { 50, 20, 15, 10, 2 },
+                new[] { 5001, 1203, 1305, 1205, 2209 },
+                new[] { 5, 50, 25, 10, 1 },
                 new[] { constructionUnit.ID },
                 new[] { 1 },
-                "ConstructionUnit_Desc",
-                1606
+                "ConstructionUnitRecipeDesc"
             );
 
-            ProtoRegistry.RegisterString("FactorySpaceStation_Name", "Factory Space Station");
-            ProtoRegistry.RegisterString("FactorySpaceStation_Desc", "Space station that can act as a factory");
+            ProtoRegistry.RegisterString("FactorySpaceStationName", "Factory Space Station");
+            ProtoRegistry.RegisterString("FactorySpaceStationDesc", "Space station that can act as a factory");
+            ProtoRegistry.RegisterString("FactorySpaceStationRecipeDesc", "Space station that can act as a factory");
             factorySpaceStationItem = ProtoRegistry.RegisterItem(
-                2112, 
-                "FactorySpaceStation_Name", 
-                "FactorySpaceStation_Desc", 
-                "dsp_factory_space_stations_icon_collector", 
-                2703
-               );
+                4602,
+                "FactorySpaceStationName",
+                "FactorySpaceStationDesc", 
+                "dsp_factory_space_stations_icon_collector",
+                1608,
+                10
+            );
             factorySpaceStationItem.BuildInGas = true;
             ProtoRegistry.RegisterRecipe(
-                412,
+                4602,
                 ERecipeType.Assemble,
                 4000,
-                new[] { constructionUnit.ID, 2105, 1502, 2210, 1204, 1406 },
-                new[] { 8, 3, 500, 16, 60, 60 },
+                new[] { 2105, constructionUnit.ID, 1125, 2210, 1406 },
+                new[] { 1, 8, 100, 16, 60 },
                 new[] { factorySpaceStationItem.ID },
                 new[] { 1 },
-                "FactorySpaceStation_Desc",
+                "FactorySpaceStationRecipeDesc",
                 1606
             );
             factorySpaceStationModel = ProtoRegistry.RegisterModel(
-                302, 
+                303, 
                 factorySpaceStationItem, 
                 "dsp_factory_space_stations_tower", 
                 null, 
                 new[] { 18, 11, 32, 1 },
-                607
+                608
             );
 
             spaceStationsStateRegistryId = CommonAPI.Systems.StarExtensionSystem.registry.Register("space_stations_state", typeof(StarSpaceStationsState));
 
             ProtoRegistry.onLoadingFinished += OnLoadingFinished;
 
-            Harmony harmony = new Harmony("com.46bit.dsp-factory-space-stations-plugin");
+            Harmony harmony = new Harmony(MODGUID);
             harmony.PatchAll(typeof(StationEditPatch));
             harmony.PatchAll(typeof(SaveFixPatch));
             harmony.PatchAll(typeof(UIStationWindowPatch));

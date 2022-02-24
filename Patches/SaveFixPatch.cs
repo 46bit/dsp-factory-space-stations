@@ -17,7 +17,7 @@ namespace DSPFactorySpaceStations
             int protoID = __instance.protoId;
             int modelIndex = __instance.modelIndex;
 
-             if (protoID == DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID)
+            if (protoID == DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID)
             {
                 if (modelIndex == DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID) return;
 
