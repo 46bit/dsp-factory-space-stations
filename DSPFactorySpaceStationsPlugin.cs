@@ -41,6 +41,7 @@ namespace DSPFactorySpaceStations
         void Awake()
         {
             Log.logger = Logger;
+            Log.Info("starting");
 
             resourceData = new ResourceData(MODNAME, "dsp_factory_space_stations");
             resourceData.LoadAssetBundle("Assets\\dsp_factory_space_stations");
@@ -108,11 +109,12 @@ namespace DSPFactorySpaceStations
             Harmony harmony = new Harmony(MODGUID);
             harmony.PatchAll(typeof(StationEditPatch));
             harmony.PatchAll(typeof(SaveFixPatch));
+            harmony.PatchAll(typeof(UIRecipePickerPatch));
             harmony.PatchAll(typeof(UIStationWindowPatch));
 
-            //UtilSystem.AddLoadMessageHandler(Save?FixPatch.GetFixMessage);
+            UtilSystem.AddLoadMessageHandler(SaveFixPatch.GetFixMessage);
 
-            Log.Info("awake");
+            Log.Info("waiting");
         }
 
         void OnLoadingFinished()

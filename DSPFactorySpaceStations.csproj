@@ -5,7 +5,7 @@
 	<TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <AssemblyName>DSPFactorySpaceStations</AssemblyName>
     <Description>My first plugin</Description>
-    <Version>1.0.0</Version>
+    <Version>0.0.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
