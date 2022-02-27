@@ -154,6 +154,7 @@ namespace DSPFactorySpaceStations
 
             StarSpaceStationsState spaceStationsState = StarSpaceStationsState.byStar(__instance.factory.planet.star);
             spaceStationsState.spaceStations[stationComponent.id] = new SpaceStationState();
+            spaceStationsState.spaceStations[stationComponent.id].Init(stationComponent.id);
             var construction = new SpaceStationConstruction();
             construction.FromRecipe(recipe, 8 * 30);
             spaceStationsState.spaceStations[stationComponent.id].construction = construction;

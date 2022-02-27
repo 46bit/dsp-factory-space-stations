@@ -118,108 +118,105 @@ namespace DSPFactorySpaceStations
 
             var recipe = LDB.recipes.Select(__instance.minerId);
             StarSpaceStationsState spaceStationsState = StarSpaceStationsState.byStar(factory.planet.star);
-            if (spaceStationsState.spaceStations[__instance.id].construction is SpaceStationConstruction)
+            var construction = spaceStationsState.spaceStations[__instance.id].construction;
+            if (!construction.Complete())
             {
-                var construction = (SpaceStationConstruction) spaceStationsState.spaceStations[__instance.id].construction;
-                if (!construction.Complete())
-                {
-                    lock (store)
-                    {
-                        for (int i = 2; i < store.Length; i++)
-                        {
-                            if (store[i].itemId == 0)
-                            {
-                                continue;
-                            }
-                            construction.remainingConstructionItems[store[i].itemId] -= store[i].count;
-                            if (construction.remainingConstructionItems[store[i].itemId] <= 0)
-                            {
-                                var unused = -construction.remainingConstructionItems[store[i].itemId];
-                                store[i].count = unused;
-                                store[i].inc = unused;
-                                store[i].max = 0;
-                                construction.remainingConstructionItems[store[i].itemId] = 0;
-                            } else {
-                                store[i].count = 0;
-                                store[i].inc = 0;
-                                store[i].max = Math.Min(store[i].max, construction.remainingConstructionItems[store[i].itemId]);
-                            }
-                        }
-                        if (!construction.Complete())
-                        {
-                            return;
-                        }
-
-                        var maxStorage = itemProto.prefabDesc.stationMaxItemCount + factory.gameData.history.remoteStationExtraStorage;
-
-                        for (int i = 2; i < 12; i++) {
-                            store[i] = new StationStore();
-                        }
-
-                        // FIXME: Handle warpers or antimatter rods being part of the recipe
-                        for (var i = 0; i < recipe.Items.Length; i++)
-                        {
-                            store[i + 2].itemId = recipe.Items[i];
-                            store[i + 2].localLogic = ELogisticStorage.Demand;
-                            store[i + 2].remoteLogic = ELogisticStorage.Demand;
-                            store[i + 2].max = maxStorage;
-                        }
-                        for (var i = 0; i < recipe.Results.Length; i++)
-                        {
-                            store[i + 2 + recipe.Items.Length].itemId = recipe.Results[i];
-                            store[i + 2 + recipe.Items.Length].localLogic = ELogisticStorage.Supply;
-                            store[i + 2 + recipe.Items.Length].remoteLogic = ELogisticStorage.Supply;
-                            store[i + 2 + recipe.Items.Length].max = maxStorage;
-                        }
-                        if (UIRoot.instance.uiGame.stationWindow != null && UIRoot.instance.uiGame.stationWindow.active && UIRoot.instance.uiGame.stationWindow.stationId == __instance.id)
-                        {
-                            UIStationWindowPatch.recalculateWindowHeight(UIRoot.instance.uiGame.stationWindow, __instance);
-                        }
-                    }
-
-                    // Try to prevent glitches when construction items are also part of the production items
-                    factory.transport.RefreshTraffic(__instance.id);
-                    factory.gameData.galacticTransport.RefreshTraffic(__instance.gid);
-                }
-
                 lock (store)
                 {
-                    // Stop producing if any recipe results are full
-                    // FIXME: Be willing to dump some things like hydrogen
-                    for (int i = 0; i < recipe.Results.Length; i++)
+                    for (int i = 2; i < store.Length; i++)
                     {
-                        if (store[2 + i + recipe.Items.Length].count >= store[2 + i + recipe.Items.Length].max)
+                        if (store[i].itemId == 0)
                         {
-                            return;
+                            continue;
+                        }
+                        construction.remainingConstructionItems[store[i].itemId] -= store[i].count;
+                        if (construction.remainingConstructionItems[store[i].itemId] <= 0)
+                        {
+                            var unused = -construction.remainingConstructionItems[store[i].itemId];
+                            store[i].count = unused;
+                            store[i].inc = unused;
+                            store[i].max = 0;
+                            construction.remainingConstructionItems[store[i].itemId] = 0;
+                        } else {
+                            store[i].count = 0;
+                            store[i].inc = 0;
+                            store[i].max = Math.Min(store[i].max, construction.remainingConstructionItems[store[i].itemId]);
                         }
                     }
+                    if (!construction.Complete())
+                    {
+                        return;
+                    }
 
-                    var maxRateOfProduction = 30 * 8;
-                    var maxProductions = maxRateOfProduction;
-                    for (int i = 0; i < recipe.Items.Length; i++)
-                    {
-                        var possibleProductionsFromItem = store[2 + i].count / recipe.ItemCounts[i];
-                        maxProductions = Math.Min(maxProductions, possibleProductionsFromItem);
-                    }
-                    var energyPerProduction = 1_000_000_000 / maxRateOfProduction;
-                    var possibleProductionsFromEnergy = __instance.energy / energyPerProduction;
-                    maxProductions = Math.Min(maxProductions, (int)possibleProductionsFromEnergy);
+                    var maxStorage = itemProto.prefabDesc.stationMaxItemCount + factory.gameData.history.remoteStationExtraStorage;
 
-                    var producedSinceLastTick = (int)Math.Round(maxProductions * dt);
-                    for (int i = 0; i < recipe.Items.Length; i++)
-                    {
-                        var itemConsumed = producedSinceLastTick * recipe.ItemCounts[i];
-                        store[2 + i].inc -= itemConsumed;
-                        store[2 + i].count -= itemConsumed;
+                    for (int i = 2; i < 12; i++) {
+                        store[i] = new StationStore();
                     }
-                    for (int i = 0; i < recipe.Results.Length; i++)
+
+                    // FIXME: Handle warpers or antimatter rods being part of the recipe
+                    for (var i = 0; i < recipe.Items.Length; i++)
                     {
-                        var itemProduced = producedSinceLastTick * recipe.ResultCounts[i];
-                        store[2 + recipe.Items.Length + i].inc += itemProduced;
-                        store[2 + recipe.Items.Length + i].count += itemProduced;
+                        store[i + 2].itemId = recipe.Items[i];
+                        store[i + 2].localLogic = ELogisticStorage.Demand;
+                        store[i + 2].remoteLogic = ELogisticStorage.Demand;
+                        store[i + 2].max = maxStorage;
                     }
-                    __instance.energy -= energyPerProduction * producedSinceLastTick;
+                    for (var i = 0; i < recipe.Results.Length; i++)
+                    {
+                        store[i + 2 + recipe.Items.Length].itemId = recipe.Results[i];
+                        store[i + 2 + recipe.Items.Length].localLogic = ELogisticStorage.Supply;
+                        store[i + 2 + recipe.Items.Length].remoteLogic = ELogisticStorage.Supply;
+                        store[i + 2 + recipe.Items.Length].max = maxStorage;
+                    }
+                    if (UIRoot.instance.uiGame.stationWindow != null && UIRoot.instance.uiGame.stationWindow.active && UIRoot.instance.uiGame.stationWindow.stationId == __instance.id)
+                    {
+                        UIStationWindowPatch.recalculateWindowHeight(UIRoot.instance.uiGame.stationWindow, __instance);
+                    }
                 }
+
+                // Try to prevent glitches when construction items are also part of the production items
+                factory.transport.RefreshTraffic(__instance.id);
+                factory.gameData.galacticTransport.RefreshTraffic(__instance.gid);
+            }
+
+            lock (store)
+            {
+                // Stop producing if any recipe results are full
+                // FIXME: Be willing to dump some things like hydrogen
+                for (int i = 0; i < recipe.Results.Length; i++)
+                {
+                    if (store[2 + i + recipe.Items.Length].count >= store[2 + i + recipe.Items.Length].max)
+                    {
+                        return;
+                    }
+                }
+
+                var maxRateOfProduction = 30 * 8;
+                var maxProductions = maxRateOfProduction;
+                for (int i = 0; i < recipe.Items.Length; i++)
+                {
+                    var possibleProductionsFromItem = store[2 + i].count / recipe.ItemCounts[i];
+                    maxProductions = Math.Min(maxProductions, possibleProductionsFromItem);
+                }
+                var energyPerProduction = 1_000_000_000 / maxRateOfProduction;
+                var possibleProductionsFromEnergy = __instance.energy / energyPerProduction;
+                maxProductions = Math.Min(maxProductions, (int)possibleProductionsFromEnergy);
+
+                var producedSinceLastTick = (int)Math.Round(maxProductions * dt);
+                for (int i = 0; i < recipe.Items.Length; i++)
+                {
+                    var itemConsumed = producedSinceLastTick * recipe.ItemCounts[i];
+                    store[2 + i].inc -= itemConsumed;
+                    store[2 + i].count -= itemConsumed;
+                }
+                for (int i = 0; i < recipe.Results.Length; i++)
+                {
+                    var itemProduced = producedSinceLastTick * recipe.ResultCounts[i];
+                    store[2 + recipe.Items.Length + i].inc += itemProduced;
+                    store[2 + recipe.Items.Length + i].count += itemProduced;
+                }
+                __instance.energy -= energyPerProduction * producedSinceLastTick;
             }
         }
     }

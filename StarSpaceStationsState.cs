@@ -85,7 +85,7 @@ namespace DSPFactorySpaceStations
         }
 
         public int stationComponentId;
-        public SpaceStationConstruction? construction;
+        public SpaceStationConstruction construction;
 
         public void Init(int stationComponentId)
         {
@@ -95,31 +95,21 @@ namespace DSPFactorySpaceStations
         public void Free()
         {
             stationComponentId = 0;
-            construction = null;
         }
 
         public void Import(BinaryReader r)
         {
             stationComponentId = r.ReadInt32();
-            if (r.ReadByte() == 1)
-            {
-                construction = new SpaceStationConstruction();
-                construction?.Import(r);
-            }
+            r.ReadByte(); // backwards compatibility
+            construction = new SpaceStationConstruction();
+            construction.Import(r);
         }
 
         public void Export(BinaryWriter w)
         {
             w.Write(stationComponentId);
-            if (construction == null)
-            {
-                w.Write((byte)0);
-            }
-            else
-            {
-                w.Write((byte)1);
-                construction?.Export(w);
-            }
+            w.Write((byte)1);
+            construction.Export(w);
         }
     }
 
@@ -250,6 +240,8 @@ namespace DSPFactorySpaceStations
                 var count = r.ReadInt32();
                 remainingConstructionItems[itemId] = count;
             }
+
+            Log.Info("IMPORTED A CONSTRUCTION");
         }
 
         public void Export(BinaryWriter w)

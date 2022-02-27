@@ -28,7 +28,7 @@ namespace DSPFactorySpaceStations
     {
         public const string MODGUID = "46bit.plugin.DSPFactorySpaceStationsPlugin";
         public const string MODNAME = "FactorySpaceStations";
-        public const string VERSION = "0.0.1";
+        public const string VERSION = "0.0.2";
 
         public const string GIGASTATIONS_GUID = "org.kremnev8.plugin.GigaStationsUpdated";
 
@@ -42,7 +42,7 @@ namespace DSPFactorySpaceStations
             Log.Info("starting");
 
             resourceData = new ResourceData(MODNAME, "dsp_factory_space_stations");
-            resourceData.LoadAssetBundle("Assets\\dsp_factory_space_stations");
+            resourceData.LoadAssetBundle("dsp_factory_space_stations");
             Assert.True(resourceData.HasAssetBundle());
             ProtoRegistry.AddResource(resourceData);
 
@@ -50,38 +50,40 @@ namespace DSPFactorySpaceStations
             ProtoRegistry.RegisterString("ConstructionUnitDesc", "Component for constructing space structures");
             ProtoRegistry.RegisterString("ConstructionUnitRecipeDesc", "Component for constructing space structures");
             var constructionUnit = ProtoRegistry.RegisterItem(
-                4601,
+                2113,
                 "ConstructionUnitName",
                 "ConstructionUnitDesc",
-                "dsp_factory_space_stations_icon_collector",
-                1607,
+                "dsp_factory_space_stations_icon_drone",
+                1707,
                 64
             );
             ProtoRegistry.RegisterRecipe(
-                4601,
+                413,
                 ERecipeType.Assemble,
                 1800,
                 new[] { 5001, 1203, 1305, 1205, 2209 },
                 new[] { 5, 50, 25, 10, 1 },
                 new[] { constructionUnit.ID },
                 new[] { 1 },
-                "ConstructionUnitRecipeDesc"
+                "ConstructionUnitRecipeDesc",
+                1606
             );
 
             ProtoRegistry.RegisterString("FactorySpaceStationName", "Factory Space Station");
-            ProtoRegistry.RegisterString("FactorySpaceStationDesc", "Space station that can act as a factory");
-            ProtoRegistry.RegisterString("FactorySpaceStationRecipeDesc", "Space station that can act as a factory");
+            ProtoRegistry.RegisterString("FactorySpaceStationDesc", "Space station for producing most types of items. End-game solution to UPS limitations. Place on gas giants. Does not fly yet.");
+            ProtoRegistry.RegisterString("FactorySpaceStationRecipeDesc", "Space station for producing most types of items. End-game solution to UPS limitations. Place on gas giants. Does not fly yet.");
             factorySpaceStationItem = ProtoRegistry.RegisterItem(
-                4602,
+                2114,
                 "FactorySpaceStationName",
                 "FactorySpaceStationDesc",
-                "dsp_factory_space_stations_icon_collector",
-                1608,
+                "dsp_factory_space_stations_icon_station",
+                2704,
                 10
             );
+            factorySpaceStationItem.CanBuild = true;
             factorySpaceStationItem.BuildInGas = true;
             ProtoRegistry.RegisterRecipe(
-                4602,
+                414,
                 ERecipeType.Assemble,
                 4000,
                 new[] { 2105, constructionUnit.ID, 1125, 2210, 1406 },
@@ -108,9 +110,10 @@ namespace DSPFactorySpaceStations
             harmony.PatchAll(typeof(StationComponentPatch));
             harmony.PatchAll(typeof(UIRecipePickerPatch));
             harmony.PatchAll(typeof(UIStationWindowPatch));
-            harmony.PatchAll(typeof(SaveFixPatch)); // FIXME: Taken from GigaStations, figure out if relevant
+            harmony.PatchAll(typeof(SaveFixPatch));
 
-            UtilSystem.AddLoadMessageHandler(SaveFixPatch.GetFixMessage);
+            // The message looks a bit weird after loading a game, as if something is wrong. Disable.
+            //UtilSystem.AddLoadMessageHandler(SaveFixPatch.GetFixMessage);
 
             Log.Info("waiting");
         }
@@ -129,9 +132,9 @@ namespace DSPFactorySpaceStations
             var interstellarLogisticsTower = LDB.items.Select(2104);
             factorySpaceStationModel.prefabDesc.materials = interstellarLogisticsTower.prefabDesc.materials;
             factorySpaceStationModel.prefabDesc.lodMaterials = interstellarLogisticsTower.prefabDesc.lodMaterials;
-            //Material newMat = Instantiate(collectorModel.prefabDesc.lodMaterials[0][0]);
-            //newMat.color = new Color(0.3726f, 0.8f, 1f, 1f);
-            //collectorModel.prefabDesc.lodMaterials[0][0] = newMat;
+            Material newMat = Instantiate(factorySpaceStationModel.prefabDesc.lodMaterials[0][0]);
+            newMat.color = new Color(0.2f, 1f, 0.2f, 1f);
+            factorySpaceStationModel.prefabDesc.lodMaterials[0][0] = newMat;
 
             Log.Info("loaded");
         }

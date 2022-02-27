@@ -1,6 +1,6 @@
 ﻿{
     "name": "FactorySpaceStation",
-    "version_number": "0.0.1",
+    "version_number": "0.0.2",
     "website_url": "https://github.com/46bit/dsp-factory-space-stations",
     "description": "Save your endgame UPS by building factories on space stations",
     "dependencies": [
