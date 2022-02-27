@@ -171,6 +171,10 @@ namespace DSPFactorySpaceStations
                             store[i + 2 + recipe.Items.Length].remoteLogic = ELogisticStorage.Supply;
                             store[i + 2 + recipe.Items.Length].max = maxStorage;
                         }
+                        if (UIRoot.instance.uiGame.stationWindow != null && UIRoot.instance.uiGame.stationWindow.active && UIRoot.instance.uiGame.stationWindow.stationId == __instance.id)
+                        {
+                            UIStationWindowPatch.recalculateWindowHeight(UIRoot.instance.uiGame.stationWindow, __instance);
+                        }
                     }
 
                     // Try to prevent glitches when construction items are also part of the production items

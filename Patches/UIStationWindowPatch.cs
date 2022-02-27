@@ -67,40 +67,48 @@ namespace DSPFactorySpaceStations
                     slot.popupBoxRect.anchoredPosition = new Vector2(5, 0);
                 }
 
-                int visibleCount = storageCount;
-                for (int i = storageCount - 1; i >= 0; i--) {
-                    if (stationComponent.storage[i].itemId != 0)
-                    {
-                        break;
-                    }
-                    visibleCount--;
-                }
-
-                __instance.windowTrans.sizeDelta = new Vector2(600, 316 + 76 * visibleCount);
-                // FIXME: Update scroll window dimensions from gigastations
-                /*scrollTrs.sizeDelta = new Vector2(scrollTrs.sizeDelta.x, 76 * visibleCount);
-                contentTrs.sizeDelta = new Vector2(contentTrs.sizeDelta.x, 76 * visibleCount);*/
-                for (int i = 0; i < __instance.storageUIs.Length; i++)
-                {
-                    if (i < visibleCount)
-                    {
-                        __instance.storageUIs[i].station = stationComponent;
-                        __instance.storageUIs[i].index = i;
-                        __instance.storageUIs[i]._Open();
-                    }
-                    else
-                    {
-                        __instance.storageUIs[i].station = null;
-                        __instance.storageUIs[i].index = 0;
-                        __instance.storageUIs[i]._Close();
-                    }
-                    __instance.storageUIs[i].ClosePopMenu();
-                }
+                recalculateWindowHeight(__instance, stationComponent);
 
                 if (stationComponent.minerId == 0)
                 {
                     UIRecipePicker.Popup(__instance.windowTrans.anchoredPosition + new Vector2(-300f, -135f), new Action<RecipeProto>(recipe => UIStationWindowPatch.OnRecipePickerReturn(__instance, recipe)));
                 }
+            }
+        }
+
+        public static void recalculateWindowHeight(UIStationWindow uiStationWindow, StationComponent stationComponent)
+        {
+            int storageCount = stationComponent.storage.Length;
+
+            int visibleCount = storageCount;
+            for (int i = storageCount - 1; i >= 0; i--)
+            {
+                if (stationComponent.storage[i].itemId != 0)
+                {
+                    break;
+                }
+                visibleCount--;
+            }
+
+            uiStationWindow.windowTrans.sizeDelta = new Vector2(600, 316 + 76 * (visibleCount + 1));
+            // FIXME: Update scroll window dimensions from gigastations
+            /*scrollTrs.sizeDelta = new Vector2(scrollTrs.sizeDelta.x, 76 * visibleCount);
+            contentTrs.sizeDelta = new Vector2(contentTrs.sizeDelta.x, 76 * visibleCount);*/
+            for (int i = 0; i < uiStationWindow.storageUIs.Length; i++)
+            {
+                if (i < visibleCount)
+                {
+                    uiStationWindow.storageUIs[i].station = stationComponent;
+                    uiStationWindow.storageUIs[i].index = i;
+                    uiStationWindow.storageUIs[i]._Open();
+                }
+                else
+                {
+                    uiStationWindow.storageUIs[i].station = null;
+                    uiStationWindow.storageUIs[i].index = 0;
+                    uiStationWindow.storageUIs[i]._Close();
+                }
+                uiStationWindow.storageUIs[i].ClosePopMenu();
             }
         }
 
@@ -173,6 +181,7 @@ namespace DSPFactorySpaceStations
             __instance.factory.transport.RefreshTraffic(stationComponent.id);
             __instance.factory.gameData.galacticTransport.RefreshTraffic(stationComponent.gid);
             __instance.OnStationIdChange();
+            recalculateWindowHeight(__instance, stationComponent);
         }
     }
 }
