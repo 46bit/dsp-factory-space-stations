@@ -14,11 +14,11 @@ namespace DSPFactorySpaceStations
 			ERecipeType.Chemical,
 			ERecipeType.Particle,
 			ERecipeType.Refine,
-			ERecipeType.Research,
+			//ERecipeType.Research,
 			ERecipeType.Smelt,
 		});
 
-		// Duplicates RefreshItems in order to filter based on multiple recipe types, not just one
+		// Filter recipes based on multiple allowed recipe types
 		[HarmonyPostfix]
         [HarmonyPatch(typeof(UIRecipePicker), "RefreshIcons")]
         public static void RefreshIconsPostfix(UIRecipePicker __instance)

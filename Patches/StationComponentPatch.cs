@@ -11,50 +11,17 @@ using UnityEngine;
 namespace DSPFactorySpaceStations
 {
     [HarmonyPatch]
-    public static class StationEditPatch
+    public static class StationComponentPatch
     {
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(StationComponent), "Init")]
-        public static void InitPostfix(StationComponent __instance)
-        {
-            if (__instance.isCollector)
-            {
-                lock(__instance.storage)
-                {
-                    for (int i = 0; i < __instance.storage.Length; i++)
-                    {
-                        __instance.storage[i].localLogic = ELogisticStorage.Supply;
-                    }
-                }
-            }
-        }
-
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(StationComponent), "Import")]
-        public static void ImportPostfix(StationComponent __instance)
-        {
-            if (__instance.isCollector)
-            {
-                lock (__instance.storage)
-                {
-                    for (int i = 0; i < __instance.storage.Length; i++)
-                    {
-                        __instance.storage[i].localLogic = ELogisticStorage.Supply;
-                    }
-                }
-            }
-        }
-
         [HarmonyPrefix]
         [HarmonyPatch(typeof(PowerSystem), "NewConsumerComponent")]
         public static bool NewConsumerComponentPrefix(PowerSystem __instance, ref int entityId, ref long work, ref long idle)
         {
-            var x = LDB.items.Select(__instance.factory.entityPool[entityId].protoId).ID;
-            if (x != DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID)
+            var itemProto = LDB.items.Select(__instance.factory.entityPool[entityId].protoId);
+            if (itemProto.ID == DSPFactorySpaceStationsPlugin.factorySpaceStationItem.ID)
             {
-                return true;
+                work = 1000000; // FIXME: Can this entire patch be replaced by configuring workEnergyPerTick?
             }
-            work = 1000000;
             return true;
         }
 
@@ -90,6 +57,25 @@ namespace DSPFactorySpaceStations
             for (var i = 0; i < __instance.storage.Length; i++)
             {
                 __instance.slots[i].storageIdx = i;
+            }
+
+            recalculateShipDiskPos(__instance, _entityPool);
+        }
+
+        public static void recalculateShipDiskPos(StationComponent stationComponent, EntityData[] entityPool)
+        {
+            ItemProto itemProto = LDB.items.Select(entityPool[stationComponent.entityId].protoId);
+            int n = stationComponent.workShipDatas.Length;
+            float shipDiskRadius = 11.5f * 2; // the height is stationComponent.shipDockPos
+            for (int i = 0; i < n; i++)
+            {
+                stationComponent.shipDiskRot[i] = Quaternion.Euler(0f, 360f / (float)n * (float)i, 0f);
+                stationComponent.shipDiskPos[i] = stationComponent.shipDiskRot[i] * new Vector3(0f, 0f, shipDiskRadius);
+            }
+            for (int i = 0; i < n; i++)
+            {
+                stationComponent.shipDiskRot[i] = stationComponent.shipDockRot * stationComponent.shipDiskRot[i];
+                stationComponent.shipDiskPos[i] = stationComponent.shipDockPos + stationComponent.shipDockRot * stationComponent.shipDiskPos[i];
             }
         }
 
@@ -131,7 +117,7 @@ namespace DSPFactorySpaceStations
             }
 
             var recipe = LDB.recipes.Select(__instance.minerId);
-            StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(factory.planet.star, DSPFactorySpaceStationsPlugin.spaceStationsStateRegistryId);
+            StarSpaceStationsState spaceStationsState = StarSpaceStationsState.byStar(factory.planet.star);
             if (spaceStationsState.spaceStations[__instance.id].construction is SpaceStationConstruction)
             {
                 var construction = (SpaceStationConstruction) spaceStationsState.spaceStations[__instance.id].construction;

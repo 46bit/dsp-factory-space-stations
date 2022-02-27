@@ -138,7 +138,13 @@ namespace DSPFactorySpaceStations
                 return;
             }
 
-            StarSpaceStationsState spaceStationsState = CommonAPI.Systems.StarExtensionSystem.GetExtension<StarSpaceStationsState>(__instance.factory.planet.star, DSPFactorySpaceStationsPlugin.spaceStationsStateRegistryId);
+            SignData[] entitySignPool = __instance.factory.entitySignPool;
+            entitySignPool[stationComponent.entityId].iconId0 = (uint)recipe.ID;
+            entitySignPool[stationComponent.entityId].iconType = 2U; // seemingly required for recipe icons to work
+            int recipeIconWidth = 11;
+            entitySignPool[stationComponent.entityId].w = recipeIconWidth;
+
+            StarSpaceStationsState spaceStationsState = StarSpaceStationsState.byStar(__instance.factory.planet.star);
             spaceStationsState.spaceStations[stationComponent.id] = new SpaceStationState();
             var construction = new SpaceStationConstruction();
             construction.FromRecipe(recipe, 8 * 30);
